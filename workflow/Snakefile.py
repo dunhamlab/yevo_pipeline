@@ -35,11 +35,11 @@ rule create_bwa_index:
     input:
         rules.copy_fasta.output
     output:
-        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.amb",
-        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.ann",
-        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.bwt",
-        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.pac",
-        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.sa",
+        f"{rules.copy_fasta.output}.amb",
+        f"{rules.copy_fasta.output}.ann",
+        f"{rules.copy_fasta.output}.bwt",
+        f"{rules.copy_fasta.output}.pac",
+        f"{rules.copy_fasta.output}.sa",
     conda:
         'envs/main.yml'
     shell:
