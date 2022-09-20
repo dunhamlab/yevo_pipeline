@@ -1,0 +1,12 @@
+#
+# yEvo Pipeline Run Configuration
+#
+
+########################################################################
+#
+#  REQUIRED PARAMETERS
+#
+########################################################################
+
+# input file paths
+fastq_dir: 'data/fastq/test'
