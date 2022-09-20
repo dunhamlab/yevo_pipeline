@@ -1,0 +1,7 @@
+name: yevo_pipeline_env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - snakemake=7.14.0
