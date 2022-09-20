@@ -3,6 +3,7 @@
 # yEvo Pipeline
 #
 
+import os
 from datetime import datetime
 
 # create a new timestamped output directory for every pipeline run
@@ -16,19 +17,49 @@ rule all:
 
 
 
+#
+# copy the supplied reference genome fasta to the pipeline output directory for reference
+#
+rule copy_fasta:
+    input:
+        config['ref_fasta']
+    output:
+        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}"
+    shell:
+        "cp {input} {output}"
+
+#
+# create a BWA index from the copied fasta reference genome
+#
+rule create_bwa_index:
+    input:
+        rules.copy_fasta.output
+    output:
+        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.amb",
+        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.ann",
+        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.bwt",
+        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.pac",
+        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}.sa",
+    conda:
+        'envs/main.yml'
+    shell:
+        "bwa index {input}"
+
         
 
-
+#
+# run fastqc to generate quality control reports on the raw reads
+#
 rule run_fastqc:
     input:
         config['fastq_dir']
     output:
-        f'{OUTPUT_DIR}/01_fastqc/stdin_fastqc.html',
-        f'{OUTPUT_DIR}/01_fastqc/stdin_fastqc.zip',
+        f'{OUTPUT_DIR}/02_fastqc/stdin_fastqc.html',
+        f'{OUTPUT_DIR}/02_fastqc/stdin_fastqc.zip',
     conda:
         'envs/main.yml'
     shell:
-        f'zcat {input}/*.fastq.gz | fastqc stdin --outdir={OUTPUT_DIR}/01_fastqc'
+        f'zcat {input}/*.fastq.gz | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc'
         
 
         
@@ -39,6 +70,7 @@ rule run_fastqc:
 rule finish:
     input:
         rules.run_fastqc.output,
+        rules.create_bwa_index.output,
     output:
         f'{OUTPUT_DIR}/DONE.txt'
     conda:

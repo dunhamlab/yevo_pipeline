@@ -8,5 +8,11 @@
 #
 ########################################################################
 
-# input file paths
+# location of raw reads
 fastq_dir: 'data/fastq/test'
+
+# reference genome
+ref_fasta: 'data/genome/sacCer3.fasta'
+
+
+
