@@ -9,11 +9,15 @@ from datetime import datetime
 # create a new timestamped output directory for every pipeline run
 OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
+# discover input files
+SAMPLES, READS = glob_wildcards(f"{config['fastq_dir']}/{{sample}}_{{read}}_001.fastq.gz")
+SAMPLES = list(set(SAMPLES))
+READS = list(set(READS))
+
 # https://snakemake.readthedocs.io/en/v7.14.0/tutorial/basics.html#step-7-adding-a-target-rule 
 rule all:
     input:
         f'{OUTPUT_DIR}/DONE.txt'
-
 
 
 
@@ -47,6 +51,7 @@ rule create_bwa_index:
 
         
 
+
 #
 # run fastqc to generate quality control reports on the raw reads
 #
@@ -62,18 +67,35 @@ rule run_fastqc:
         f'zcat {input}/*.fastq.gz | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc'
         
 
+
+#
+# run fastqc to generate quality control reports on the raw reads
+#
+rule align_reads:
+    input:
+        rules.create_bwa_index.output,
+        r1=f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz",
+        r2=f"{config['fastq_dir']}/{{sample}}_R2_001.fastq.gz",
+    output:
+        f"{OUTPUT_DIR}/03_bwa/{{sample}}.sam"
+    conda:
+        'envs/main.yml'
+    shell:
+        "bwa mem -R '@RG\tID:YEVO_SEQID\tSM:{wildcards.sample}\tLB:1' {rules.copy_fasta.output} {input.r1} {input.r2} > {output}"
+       
         
         
+ 
+
+
         
         
 
 rule finish:
     input:
+        expand(rules.align_reads.output, sample=SAMPLES),
         rules.run_fastqc.output,
-        rules.create_bwa_index.output,
     output:
         f'{OUTPUT_DIR}/DONE.txt'
-    conda:
-        'envs/main.yml'
     shell:
         'touch {output}'
