@@ -77,23 +77,42 @@ rule align_reads:
         r1=f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz",
         r2=f"{config['fastq_dir']}/{{sample}}_R2_001.fastq.gz",
     output:
-        f"{OUTPUT_DIR}/03_bwa/{{sample}}.sam"
+        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2.sam"
     conda:
         'envs/main.yml'
     shell:
         "bwa mem -R '@RG\tID:YEVO_SEQID\tSM:{wildcards.sample}\tLB:1' {rules.copy_fasta.output} {input.r1} {input.r2} > {output}"
        
         
+rule samtools_view:
+    input:
+        rules.align_reads.output
+    output:
+        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2.bam"
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools view -bS {input} -o {output}"
         
- 
 
-
+rule samtools_sort_one:
+    input:
+        rules.samtools_view.output
+    output:
+        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2_sort.bam"
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools sort {input} -o {output}"
         
         
-
+        
+        
+        
+        
 rule finish:
     input:
-        expand(rules.align_reads.output, sample=SAMPLES),
+        expand(rules.samtools_sort_one.output, sample=SAMPLES),
         rules.run_fastqc.output,
     output:
         f'{OUTPUT_DIR}/DONE.txt'
