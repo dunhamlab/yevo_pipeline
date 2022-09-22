@@ -105,14 +105,32 @@ rule samtools_sort_one:
     shell:
         "samtools sort {input} -o {output}"
         
+rule samtools_index_one:
+    input:
+        rules.samtools_sort_one.output
+    output:
+        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2_sort.bam.bai"
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools index {input}"
         
-        
-        
+rule samtools_flagstat:
+    input:
+        rules.samtools_sort_one.output
+    output:
+        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2_sort_flagstat.txt"
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools flagstat {input} > {output}"
+    
         
         
 rule finish:
     input:
-        expand(rules.samtools_sort_one.output, sample=SAMPLES),
+        expand(rules.samtools_index_one.output, sample=SAMPLES),
+        expand(rules.samtools_flagstat.output, sample=SAMPLES),
         rules.run_fastqc.output,
     output:
         f'{OUTPUT_DIR}/DONE.txt'
