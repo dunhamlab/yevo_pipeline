@@ -175,7 +175,7 @@ rule picard_mark_dupes:
     conda:
         'envs/main.yml'
     shell:
-        "picard MarkDuplicates --INPUT {input} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT --PROGRAM_RECORD_ID null"
+        "picard MarkDuplicates --INPUT {input} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT"
 
 
 rule picard_read_groups:
@@ -186,7 +186,7 @@ rule picard_read_groups:
     conda:
         'envs/main.yml'
     shell:
-        f"picard AddOrReplaceReadGroups --INPUT {{input}} --OUTPUT {{output}} --RGID {SEQID} --RGLB 1 --RGPU 1 --RGPL ILLUMINA --RGSM {{wildcards.sample}} --VALIDATION_STRINGENCY LENIENT"
+        f"picard AddOrReplaceReadGroups --INPUT {{input}} --OUTPUT {{output}} --RGID {SEQID} --RGLB 1 --RGPU 1 --RGPL illumina --RGSM {{wildcards.sample}} --VALIDATION_STRINGENCY LENIENT"
 
 
 
