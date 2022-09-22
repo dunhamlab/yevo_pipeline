@@ -170,17 +170,47 @@ rule picard_read_groups:
 
 
 
+rule samtools_sort_two:
+    input:
+        rules.picard_read_groups.output
+    output:
+        f"{OUTPUT_DIR}/04_picard/{{sample}}_R1R2_comb.RG.MD.sort.bam",
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools sort {input} -o {output}"
+
+
+rule samtools_index_two:
+    input:
+        rules.samtools_sort_two.output
+    output:
+        f"{OUTPUT_DIR}/04_picard/{{sample}}_R1R2_comb.RG.MD.sort.bam.bai",
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools index {input}"
+
+
+
+
+
+
 
 
 
 
 rule finish:
     input:
+
         rules.run_fastqc_all.output,
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
-        expand(rules.picard_read_groups.output, sample=SAMPLES),
+
         expand(rules.samtools_index_one.output, sample=SAMPLES),
+        expand(rules.samtools_index_two.output, sample=SAMPLES),
+
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
+
     output:
         f'{OUTPUT_DIR}/DONE.txt'
     shell:
