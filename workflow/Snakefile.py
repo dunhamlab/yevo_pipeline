@@ -9,6 +9,9 @@ from datetime import datetime
 # create a new timestamped output directory for every pipeline run
 OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
+SEQID='yEvo_hackathon_align' # Project name and date for bam header
+
+
 # discover input files
 SAMPLES, READS = glob_wildcards(f"{config['fastq_dir']}/{{sample}}_{{read}}_001.fastq.gz")
 SAMPLES = list(set(SAMPLES))
@@ -77,18 +80,18 @@ rule align_reads:
         r1=f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz",
         r2=f"{config['fastq_dir']}/{{sample}}_R2_001.fastq.gz",
     output:
-        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2.sam"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2.sam"
     conda:
         'envs/main.yml'
     shell:
-        "bwa mem -R '@RG\tID:YEVO_SEQID\tSM:{wildcards.sample}\tLB:1' {rules.copy_fasta.output} {input.r1} {input.r2} > {output}"
+        f"bwa mem -R '@RG\tID:{SEQID}\tSM:{{wildcards.sample}}\tLB:1' {{rules.copy_fasta.output}} {{input.r1}} {{input.r2}} > {{output}}"
        
         
 rule samtools_view:
     input:
         rules.align_reads.output
     output:
-        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2.bam"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2.bam"
     conda:
         'envs/main.yml'
     shell:
@@ -99,7 +102,7 @@ rule samtools_sort_one:
     input:
         rules.samtools_view.output
     output:
-        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2_sort.bam"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2_sort.bam"
     conda:
         'envs/main.yml'
     shell:
@@ -109,7 +112,7 @@ rule samtools_index_one:
     input:
         rules.samtools_sort_one.output
     output:
-        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2_sort.bam.bai"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2_sort.bam.bai"
     conda:
         'envs/main.yml'
     shell:
@@ -119,7 +122,7 @@ rule samtools_flagstat:
     input:
         rules.samtools_sort_one.output
     output:
-        f"{OUTPUT_DIR}/03_alignment/{{sample}}_R1R2_sort_flagstat.txt"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2_sort_flagstat.txt"
     conda:
         'envs/main.yml'
     shell:
@@ -137,7 +140,15 @@ rule picard_mark_dupes:
     shell:
         "picard MarkDuplicates --INPUT {input} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT"
 
-
+rule picard_read_groups:
+    input:
+        rules.picard_mark_dupes.output.bam
+    output:
+        f"{OUTPUT_DIR}/04_picard/{{sample}}_R1R2_comb.RG.MD.bam",
+    conda:
+        'envs/main.yml'
+    shell:
+        f"picard AddOrReplaceReadGroups --INPUT {{input}} --OUTPUT {{output}} --RGID {SEQID} --RGLB 1 --RGPU 1 --RGPL illumina --RGSM {{wildcards.sample}} --VALIDATION_STRINGENCY LENIENT"
 
 
 
@@ -150,7 +161,7 @@ rule picard_mark_dupes:
 
 rule finish:
     input:
-        expand(rules.picard_mark_dupes.output, sample=SAMPLES),
+        expand(rules.picard_read_groups.output, sample=SAMPLES),
         expand(rules.samtools_index_one.output, sample=SAMPLES),
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         rules.run_fastqc.output,
