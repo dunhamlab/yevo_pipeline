@@ -41,6 +41,7 @@ rule copy_fasta:
     shell:
         "cp {input} {output}"
 
+
 rule index_fasta:
     input:
         rules.copy_fasta.output
@@ -50,6 +51,7 @@ rule index_fasta:
         'envs/main.yml'
     shell:
         "picard CreateSequenceDictionary -R {input}"
+
 
 rule create_ref_dict:
     input:
@@ -227,6 +229,7 @@ rule gatk_register:
     shell:
         "gatk-register {input} > {output}"
 
+
 rule gatk_realign_targets:
     input:
         fa=rules.copy_fasta.output,
@@ -237,6 +240,7 @@ rule gatk_realign_targets:
         'envs/main.yml'
     shell:
         "GenomeAnalysisTK -T RealignerTargetCreator -R {input.fa} -I {input.bam} -o {output}"
+
 
 rule gatk_realign_indels:
     input:
@@ -250,6 +254,33 @@ rule gatk_realign_indels:
         'envs/main.yml'
     shell:
         "GenomeAnalysisTK -T IndelRealigner -R {input.fa} -I {input.bam} -targetIntervals {input.intervals} -o {output.bam}"
+
+
+rule samtools_sort_three:
+    input:
+        rules.gatk_realign_indels.output.bam
+    output:
+        f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.sort.bam',
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools sort {input} -o {output}"
+
+
+rule samtools_index_three:
+    input:
+        rules.samtools_sort_three.output
+    output:
+        f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.sort.bam.bai',
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools index {input}"
+
+
+
+
+
 
 
 rule finish:
@@ -266,7 +297,7 @@ rule finish:
 
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
-        expand(rules.gatk_realign_indels.output, sample=SAMPLES),
+        expand(rules.samtools_index_three.output, sample=SAMPLES),
         
 
     output:
