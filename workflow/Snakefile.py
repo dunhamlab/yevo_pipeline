@@ -238,7 +238,18 @@ rule gatk_realign_targets:
     shell:
         "GenomeAnalysisTK -T RealignerTargetCreator -R {input.fa} -I {input.bam} -o {output}"
 
-
+rule gatk_realign_indels:
+    input:
+        fa=rules.copy_fasta.output,
+        intervals=rules.gatk_realign_targets.output,
+        bam=rules.samtools_sort_two.output
+    output:
+        bam=f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.bam',
+        bai=f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.bai'
+    conda:
+        'envs/main.yml'
+    shell:
+        "GenomeAnalysisTK -T IndelRealigner -R {input.fa} -I {input.bam} -targetIntervals {input.intervals} -o {output.bam}"
 
 
 rule finish:
@@ -255,7 +266,7 @@ rule finish:
 
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
-        expand(rules.gatk_realign_targets.output, sample=SAMPLES),
+        expand(rules.gatk_realign_indels.output, sample=SAMPLES),
         
 
     output:
