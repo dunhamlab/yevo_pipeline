@@ -41,6 +41,7 @@ rule copy_fasta:
     shell:
         "cp {input} {output}"
 
+
 #
 # create a BWA index from the copied fasta reference genome
 #
@@ -72,6 +73,7 @@ rule run_fastqc_all:
     shell:
         f'zcat {input}/*.fastq.gz | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc/all_samples/'
         
+
 rule run_fastqc_persample:
     input:
         f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz",
