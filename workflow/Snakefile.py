@@ -119,8 +119,8 @@ rule align_reads:
     conda:
         'envs/main.yml'
     shell:
-        f"bwa mem -R '@RG\tID:{SEQID}\tSM:{{wildcards.sample}}\tLB:1' {{rules.copy_fasta.output}} {{input.r1}} {{input.r2}} > {{output}}"
-        
+        r"""bwa mem -R '@RG\tID:""" + SEQID + r"""\tSM:""" + '{wildcards.sample}' + r"""\tLB:1'""" + ' {rules.copy_fasta.output} {input.r1} {input.r2} > {output}'
+
 
 rule samtools_view:
     input:
@@ -170,23 +170,23 @@ rule picard_mark_dupes:
     input:
         rules.samtools_sort_one.output
     output:
-        bam=f"{OUTPUT_DIR}/04_picard/{{sample}}_R1R2_comb.MD.bam",
+        bam=f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.MD.bam",
         metrics=f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.sort_dup_metrix"
     conda:
         'envs/main.yml'
     shell:
-        "picard MarkDuplicates --INPUT {input} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT"
+        "picard MarkDuplicates --INPUT {input} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT --PROGRAM_RECORD_ID null"
 
 
 rule picard_read_groups:
     input:
         rules.picard_mark_dupes.output.bam
     output:
-        f"{OUTPUT_DIR}/04_picard/{{sample}}_R1R2_comb.RG.MD.bam",
+        f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.RG.MD.bam",
     conda:
         'envs/main.yml'
     shell:
-        f"picard AddOrReplaceReadGroups --INPUT {{input}} --OUTPUT {{output}} --RGID {SEQID} --RGLB 1 --RGPU 1 --RGPL illumina --RGSM {{wildcards.sample}} --VALIDATION_STRINGENCY LENIENT"
+        f"picard AddOrReplaceReadGroups --INPUT {{input}} --OUTPUT {{output}} --RGID {SEQID} --RGLB 1 --RGPU 1 --RGPL ILLUMINA --RGSM {{wildcards.sample}} --VALIDATION_STRINGENCY LENIENT"
 
 
 
@@ -194,7 +194,7 @@ rule samtools_sort_two:
     input:
         rules.picard_read_groups.output
     output:
-        f"{OUTPUT_DIR}/04_picard/{{sample}}_R1R2_comb.RG.MD.sort.bam",
+        f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.RG.MD.sort.bam",
     conda:
         'envs/main.yml'
     shell:
@@ -205,7 +205,7 @@ rule samtools_index_two:
     input:
         rules.samtools_sort_two.output
     output:
-        f"{OUTPUT_DIR}/04_picard/{{sample}}_R1R2_comb.RG.MD.sort.bam.bai",
+        f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.RG.MD.sort.bam.bai",
     conda:
         'envs/main.yml'
     shell:
@@ -237,6 +237,8 @@ rule gatk_realign_targets:
         'envs/main.yml'
     shell:
         "GenomeAnalysisTK -T RealignerTargetCreator -R {input.fa} -I {input.bam} -o {output}"
+
+
 
 
 rule finish:
