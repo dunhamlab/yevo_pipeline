@@ -16,6 +16,8 @@ READS = list(set(READS))
 # create a new timestamped output directory for every pipeline run
 OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
+OUTPUT_DIR = f"results/20220921_234506"
+
 # Project name and date for bam header
 SEQID='yEvo_hackathon_align'
 
@@ -278,6 +280,32 @@ rule samtools_index_three:
         "samtools index {input}"
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Variant Calling ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+rule bcftools_pileup:
+    input:
+        rules.samtools_sort_three.output
+    output:
+        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_samtools_AB.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "bcftools mpileup --ignore-RG -Ou -ABf {rules.copy_fasta.output} {input} | bcftools call -vmO v -o {output}"
+
+
+rule freebayes:
+    input:
+        rules.samtools_sort_three.output
+    output:
+        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_freebayes_BCBio.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "freebayes -f {rules.copy_fasta.output} --pooled-discrete --pooled-continuous --report-genotype-likelihood-max --allele-balance-priors-off --min-alternate-fraction 0.1 {input} > {output}"
+
+
+
+
 
 
 
@@ -298,6 +326,9 @@ rule finish:
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
         expand(rules.samtools_index_three.output, sample=SAMPLES),
+
+        expand(rules.bcftools_pileup.output, sample=SAMPLES),
+        expand(rules.freebayes.output, sample=SAMPLES),
         
 
     output:
