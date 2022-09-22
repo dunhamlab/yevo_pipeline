@@ -227,6 +227,16 @@ rule gatk_register:
     shell:
         "gatk-register {input} > {output}"
 
+rule gatk_realign_targets:
+    input:
+        fa=rules.copy_fasta.output,
+        bam=rules.samtools_sort_two.output
+    output:
+        f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.bam.intervals'
+    conda:
+        'envs/main.yml'
+    shell:
+        "GenomeAnalysisTK -T RealignerTargetCreator -R {input.fa} -I {input.bam} -o {output}"
 
 
 rule finish:
@@ -243,6 +253,7 @@ rule finish:
 
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
+        expand(rules.gatk_realign_targets.output, sample=SAMPLES),
         
 
     output:
