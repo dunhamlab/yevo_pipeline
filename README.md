@@ -2,7 +2,7 @@
 
 # yEvo Pipeline
 
-[![Snakemake](https://raw.githubusercontent.com/beliveau-lab/PaintSHOP_pipeline/master/docs/img/snakemake.svg)](https://snakemake.readthedocs.io)
+[![Snakemake](https://img.shields.io/badge/snakemake-≥7.14.0-brightgreen.svg?style=flat)](https://snakemake.readthedocs.io)
 [![Conda](https://anaconda.org/conda-forge/terraform-provider-github/badges/installer/conda.svg)](https://docs.conda.io/en/latest/miniconda.html)
 
 Snakemake pipeline for analyzing sequencing data from the [yEvo](https://yevo.org/) project.
