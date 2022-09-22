@@ -6,16 +6,21 @@
 import os
 from datetime import datetime
 
-# create a new timestamped output directory for every pipeline run
-OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-SEQID='yEvo_hackathon_align' # Project name and date for bam header
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Define Constants ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 # discover input files
 SAMPLES, READS = glob_wildcards(f"{config['fastq_dir']}/{{sample}}_{{read}}_001.fastq.gz")
 SAMPLES = list(set(SAMPLES))
 READS = list(set(READS))
+
+# create a new timestamped output directory for every pipeline run
+OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+# Project name and date for bam header
+SEQID='yEvo_hackathon_align'
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Pipeline ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 # https://snakemake.readthedocs.io/en/v7.14.0/tutorial/basics.html#step-7-adding-a-target-rule 
 rule all:
@@ -23,6 +28,7 @@ rule all:
         f'{OUTPUT_DIR}/DONE.txt'
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~ Set Up Reference Files ~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 #
 # copy the supplied reference genome fasta to the pipeline output directory for reference
@@ -53,27 +59,34 @@ rule create_bwa_index:
         "bwa index {input}"
 
         
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~ Run QC on Raw Reads ~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-
-#
-# run fastqc to generate quality control reports on the raw reads
-#
-rule run_fastqc:
+rule run_fastqc_all:
     input:
         config['fastq_dir']
     output:
-        f'{OUTPUT_DIR}/02_fastqc/stdin_fastqc.html',
-        f'{OUTPUT_DIR}/02_fastqc/stdin_fastqc.zip',
+        f'{OUTPUT_DIR}/02_fastqc/all_samples/stdin_fastqc.html',
+        f'{OUTPUT_DIR}/02_fastqc/all_samples/stdin_fastqc.zip',
     conda:
         'envs/main.yml'
     shell:
-        f'zcat {input}/*.fastq.gz | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc'
+        f'zcat {input}/*.fastq.gz | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc/all_samples/'
         
+rule run_fastqc_persample:
+    input:
+        f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz",
+        f"{config['fastq_dir']}/{{sample}}_R2_001.fastq.gz",
+    output:
+        f"{OUTPUT_DIR}/02_fastqc/{{sample}}/stdin_fastqc.html",
+        f"{OUTPUT_DIR}/02_fastqc/{{sample}}/stdin_fastqc.zip"
+    conda:
+        'envs/main.yml'
+    shell:
+        f"zcat {{input}} | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc/{{wildcards.sample}}"
 
 
-#
-# run fastqc to generate quality control reports on the raw reads
-#
+# ~~~~~~~~~~~~~~~~~~~~~~~~ Perform Initial Alignment ~~~~~~~~~~~~~~~~~~~~~~~~ #
+
 rule align_reads:
     input:
         rules.create_bwa_index.output,
@@ -85,8 +98,8 @@ rule align_reads:
         'envs/main.yml'
     shell:
         f"bwa mem -R '@RG\tID:{SEQID}\tSM:{{wildcards.sample}}\tLB:1' {{rules.copy_fasta.output}} {{input.r1}} {{input.r2}} > {{output}}"
-       
         
+
 rule samtools_view:
     input:
         rules.align_reads.output
@@ -96,7 +109,7 @@ rule samtools_view:
         'envs/main.yml'
     shell:
         "samtools view -bS {input} -o {output}"
-        
+
 
 rule samtools_sort_one:
     input:
@@ -108,6 +121,7 @@ rule samtools_sort_one:
     shell:
         "samtools sort {input} -o {output}"
         
+
 rule samtools_index_one:
     input:
         rules.samtools_sort_one.output
@@ -118,6 +132,7 @@ rule samtools_index_one:
     shell:
         "samtools index {input}"
         
+
 rule samtools_flagstat:
     input:
         rules.samtools_sort_one.output
@@ -127,7 +142,7 @@ rule samtools_flagstat:
         'envs/main.yml'
     shell:
         "samtools flagstat {input} > {output}"
-    
+
 
 rule picard_mark_dupes:
     input:
@@ -139,6 +154,7 @@ rule picard_mark_dupes:
         'envs/main.yml'
     shell:
         "picard MarkDuplicates --INPUT {input} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT"
+
 
 rule picard_read_groups:
     input:
@@ -156,15 +172,13 @@ rule picard_read_groups:
 
 
 
-
-
-
 rule finish:
     input:
+        rules.run_fastqc_all.output,
+        expand(rules.run_fastqc_persample.output, sample=SAMPLES),
         expand(rules.picard_read_groups.output, sample=SAMPLES),
         expand(rules.samtools_index_one.output, sample=SAMPLES),
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
-        rules.run_fastqc.output,
     output:
         f'{OUTPUT_DIR}/DONE.txt'
     shell:
