@@ -1,9 +1,12 @@
-# [IN DEVELOPMENT]
+<div align="center">
+    <a href="#readme"><img src="./docs/img/yevo_pipeline_logo.png" width="300"></a>
+</div>
 
-# yEvo Pipeline
 
-[![Snakemake](https://img.shields.io/badge/snakemake-≥7.14.0-brightgreen.svg?style=flat)](https://snakemake.readthedocs.io)
-[![Conda](https://anaconda.org/conda-forge/terraform-provider-github/badges/installer/conda.svg)](https://docs.conda.io/en/latest/miniconda.html)
+# [IN DEVELOPMENT] yEvo Pipeline
+
+[![Snakemake](./docs/img/snakemake.svg)](https://snakemake.readthedocs.io)
+[![Conda](./docs/img/conda.svg)](https://docs.conda.io/en/latest/miniconda.html)
 
 Snakemake pipeline for analyzing sequencing data from the [yEvo](https://yevo.org/) project.
 
