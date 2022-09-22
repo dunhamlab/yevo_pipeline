@@ -125,10 +125,32 @@ rule samtools_flagstat:
     shell:
         "samtools flagstat {input} > {output}"
     
-        
-        
+
+rule picard_mark_dupes:
+    input:
+        rules.samtools_sort_one.output
+    output:
+        bam=f"{OUTPUT_DIR}/04_picard/{{sample}}_R1R2_comb.MD.bam",
+        metrics=f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.sort_dup_metrix"
+    conda:
+        'envs/main.yml'
+    shell:
+        "picard MarkDuplicates --INPUT {input} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT"
+
+
+
+
+
+
+
+
+
+
+
+
 rule finish:
     input:
+        expand(rules.picard_mark_dupes.output, sample=SAMPLES),
         expand(rules.samtools_index_one.output, sample=SAMPLES),
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         rules.run_fastqc.output,
