@@ -41,6 +41,26 @@ rule copy_fasta:
     shell:
         "cp {input} {output}"
 
+rule index_fasta:
+    input:
+        rules.copy_fasta.output
+    output:
+        f"{rules.copy_fasta.output}".rstrip('fasta') + 'dict'
+    conda:
+        'envs/main.yml'
+    shell:
+        "picard CreateSequenceDictionary -R {input}"
+
+rule create_ref_dict:
+    input:
+        rules.copy_fasta.output
+    output:
+        f"{rules.copy_fasta.output}.fai"
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools faidx {input}"
+
 
 #
 # create a BWA index from the copied fasta reference genome
@@ -192,9 +212,7 @@ rule samtools_index_two:
         "samtools index {input}"
 
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ GATK Re-alignment ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
-
 
 #
 #  configure gatk-3.7 inside conda environment
@@ -211,13 +229,11 @@ rule gatk_register:
 
 
 
-
-
-
-
 rule finish:
     input:
         rules.gatk_register.output,
+        rules.index_fasta.output,
+        rules.create_ref_dict.output,
 
         rules.run_fastqc_all.output,
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
@@ -226,6 +242,8 @@ rule finish:
         expand(rules.samtools_index_two.output, sample=SAMPLES),
 
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
+        
+        
 
     output:
         f'{OUTPUT_DIR}/DONE.txt'
