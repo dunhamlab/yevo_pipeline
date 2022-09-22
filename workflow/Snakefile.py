@@ -193,6 +193,21 @@ rule samtools_index_two:
 
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ GATK Re-alignment ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+
+#
+#  configure gatk-3.7 inside conda environment
+#
+rule gatk_register:
+    input:
+        f'workflow/envs/src/GenomeAnalysisTK-3.7-0-gcfedb67.tar.bz2'
+    output:
+        f'{OUTPUT_DIR}/05_gatk/gatk_3.7_registered.txt'
+    conda:
+        'envs/main.yml'
+    shell:
+        "gatk-register {input} > {output}"
 
 
 
@@ -202,6 +217,7 @@ rule samtools_index_two:
 
 rule finish:
     input:
+        rules.gatk_register.output,
 
         rules.run_fastqc_all.output,
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
