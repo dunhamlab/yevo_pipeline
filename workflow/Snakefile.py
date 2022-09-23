@@ -15,8 +15,7 @@ READS = list(set(READS))
 
 # create a new timestamped output directory for every pipeline run
 OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-
-OUTPUT_DIR = f"results/20220921_234506"
+# OUTPUT_DIR = f"results/20220922_100144"
 
 # Project name and date for bam header
 SEQID='yEvo_hackathon_align'
@@ -48,22 +47,44 @@ rule index_fasta:
     input:
         rules.copy_fasta.output
     output:
-        f"{rules.copy_fasta.output}".rstrip('fasta') + 'dict'
+        f"{rules.copy_fasta.output}.fai"
     conda:
         'envs/main.yml'
     shell:
-        "picard CreateSequenceDictionary -R {input}"
+        "samtools faidx {input}"
 
 
 rule create_ref_dict:
     input:
         rules.copy_fasta.output
     output:
-        f"{rules.copy_fasta.output}.fai"
+        f"{rules.copy_fasta.output}".rstrip('fasta') + 'dict'
     conda:
         'envs/main.yml'
     shell:
-        "samtools faidx {input}"
+        "picard CreateSequenceDictionary -R {input}"
+
+#
+# copy the supplied reference genome fasta to the pipeline output directory for reference
+#
+rule copy_ancestor_bam:
+    input:
+        config['ancestor_bam']
+    output:
+        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ancestor_bam'])}"
+    shell:
+        "cp {input} {output}"
+
+
+rule index_ancestor_bam:
+    input:
+        rules.copy_ancestor_bam.output
+    output:
+        f"{rules.copy_ancestor_bam.output}.bai"
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools index {input}"
 
 
 #
@@ -161,25 +182,27 @@ rule samtools_index_one:
 
 rule samtools_flagstat:
     input:
-        rules.samtools_sort_one.output
+        bam=rules.samtools_sort_one.output,
+        idx=rules.samtools_index_one.output
     output:
         f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2_sort_flagstat.txt"
     conda:
         'envs/main.yml'
     shell:
-        "samtools flagstat {input} > {output}"
+        "samtools flagstat {input.bam} > {output}"
 
 
 rule picard_mark_dupes:
     input:
-        rules.samtools_sort_one.output
+        bam=rules.samtools_sort_one.output,
+        idx=rules.samtools_index_one.output        
     output:
         bam=f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.MD.bam",
         metrics=f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.sort_dup_metrix"
     conda:
         'envs/main.yml'
     shell:
-        "picard MarkDuplicates --INPUT {input} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT"
+        "picard MarkDuplicates --INPUT {input.bam} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT"
 
 
 rule picard_read_groups:
@@ -235,7 +258,8 @@ rule gatk_register:
 rule gatk_realign_targets:
     input:
         fa=rules.copy_fasta.output,
-        bam=rules.samtools_sort_two.output
+        bam=rules.samtools_sort_two.output,
+        idx=rules.samtools_index_two.output
     output:
         f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.bam.intervals'
     conda:
@@ -248,7 +272,8 @@ rule gatk_realign_indels:
     input:
         fa=rules.copy_fasta.output,
         intervals=rules.gatk_realign_targets.output,
-        bam=rules.samtools_sort_two.output
+        bam=rules.samtools_sort_two.output,
+        idx=rules.samtools_index_two.output        
     output:
         bam=f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.bam',
         bai=f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.bai'
@@ -284,24 +309,52 @@ rule samtools_index_three:
 
 rule bcftools_pileup:
     input:
-        rules.samtools_sort_three.output
+        bam=rules.samtools_sort_three.output,
+        idx=rules.samtools_index_three.output
     output:
         f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_samtools_AB.vcf',
     conda:
         'envs/main.yml'
     shell:
-        "bcftools mpileup --ignore-RG -Ou -ABf {rules.copy_fasta.output} {input} | bcftools call -vmO v -o {output}"
+        "bcftools mpileup --ignore-RG -Ou -ABf {rules.copy_fasta.output} {input.bam} | bcftools call -vmO v -o {output}"
 
 
 rule freebayes:
     input:
-        rules.samtools_sort_three.output
+        bam=rules.samtools_sort_three.output,
+        idx=rules.samtools_index_three.output
     output:
         f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_freebayes_BCBio.vcf',
     conda:
         'envs/main.yml'
     shell:
-        "freebayes -f {rules.copy_fasta.output} --pooled-discrete --pooled-continuous --report-genotype-likelihood-max --allele-balance-priors-off --min-alternate-fraction 0.1 {input} > {output}"
+        "freebayes -f {rules.copy_fasta.output} --pooled-discrete --pooled-continuous --report-genotype-likelihood-max --allele-balance-priors-off --min-alternate-fraction 0.1 {input.bam} > {output}"
+
+
+rule lofreq:
+    input:
+        bam=rules.samtools_sort_three.output,
+        idx=rules.samtools_index_three.output,
+        ancidx=rules.index_ancestor_bam.output,
+    output:
+        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_normal_relaxed.vcf.gz',
+        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_tumor_relaxed.vcf.gz',
+        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_somatic_final.snvs.vcf.gz',
+    conda:
+        'envs/main.yml'
+    shell:
+        f"lofreq somatic -n {{rules.copy_ancestor_bam.output}} -t {{input.bam}} -f {{rules.copy_fasta.output}} --threads 4 -o {OUTPUT_DIR}/06_variant_calling/{{wildcards.sample}}_lofreq_"
+
+
+
+
+
+
+        
+
+
+
+        
 
 
 
@@ -316,19 +369,22 @@ rule finish:
         rules.gatk_register.output,
         rules.index_fasta.output,
         rules.create_ref_dict.output,
+        
+#         rules.index_ancestor_bam.output,
 
         rules.run_fastqc_all.output,
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
 
-        expand(rules.samtools_index_one.output, sample=SAMPLES),
-        expand(rules.samtools_index_two.output, sample=SAMPLES),
+#         expand(rules.samtools_index_one.output, sample=SAMPLES),
+#         expand(rules.samtools_index_two.output, sample=SAMPLES),
 
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
-        expand(rules.samtools_index_three.output, sample=SAMPLES),
+#         expand(rules.samtools_index_three.output, sample=SAMPLES),
 
         expand(rules.bcftools_pileup.output, sample=SAMPLES),
         expand(rules.freebayes.output, sample=SAMPLES),
+        expand(rules.lofreq.output, sample=SAMPLES),
         
 
     output:
