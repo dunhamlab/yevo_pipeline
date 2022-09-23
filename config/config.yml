@@ -9,12 +9,14 @@
 ########################################################################
 
 # location of raw reads
-fastq_dir: 'data/fastq/test'
+fastq_dir: 'data/fastq/raw'
+# fastq_dir: 'data/fastq/test'
 # fastq_dir: 'data/fastq/test2'
 
 # reference genome
 ref_fasta: 'data/genome/sacCer3.fasta'
 
+# ancestor strain mutations
 ancestor_bam: 'data/ancestor/YMD4612_pink_S1_comb_R1R2.RG.MD.realign.sort.bam'
 
 
