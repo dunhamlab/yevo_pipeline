@@ -353,7 +353,7 @@ rule lofreq:
     conda:
         'envs/main.yml'
     shell:
-        f"lofreq somatic -n {{rules.copy_ancestor_bam.output}} -t {{input.bam}} -f {{rules.copy_fasta.output}} --threads 4 -o {OUTPUT_DIR}/06_variant_calling/{{wildcards.sample}}_lofreq_"
+        f"lofreq somatic -n {{rules.copy_ancestor_bam.output}} -t {{input.bam}} -f {{rules.copy_fasta.output}} -o {OUTPUT_DIR}/06_variant_calling/{{wildcards.sample}}_lofreq_"
 
 
 
