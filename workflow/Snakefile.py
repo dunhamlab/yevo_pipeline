@@ -15,7 +15,7 @@ SAMPLES = list(set(glob_wildcards(f"{config['fastq_dir']}/{{sample}}_R1_001.fast
 OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
 # Project name and date for bam header
-SEQID='yEvo_hackathon_align'
+SEQID='yevo_pipeline_align'
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Pipeline ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
