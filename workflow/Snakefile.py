@@ -9,7 +9,7 @@ from datetime import datetime
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Define Constants ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 # discover input files
-SAMPLES = list(set(glob_wildcards(f"{config['fastq_dir']}/{{sample}}_R*_001.fastq.gz")))
+SAMPLES = list(set(glob_wildcards(f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz").sample))
 
 # create a new timestamped output directory for every pipeline run
 OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
