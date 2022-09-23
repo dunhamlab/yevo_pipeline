@@ -9,13 +9,10 @@ from datetime import datetime
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Define Constants ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 # discover input files
-SAMPLES, READS = glob_wildcards(f"{config['fastq_dir']}/{{sample}}_{{read}}_001.fastq.gz")
-SAMPLES = list(set(SAMPLES))
-READS = list(set(READS))
+SAMPLES = list(set(glob_wildcards(f"{config['fastq_dir']}/{{sample}}_R*_001.fastq.gz")))
 
 # create a new timestamped output directory for every pipeline run
 OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-# OUTPUT_DIR = f"results/20220922_100144"
 
 # Project name and date for bam header
 SEQID='yEvo_hackathon_align'
@@ -30,6 +27,16 @@ rule all:
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ Set Up Reference Files ~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+#
+# make a list of discovered samples
+#
+rule list_samples:
+    output:
+        f"{OUTPUT_DIR}/01_ref_files/00_sample_list.txt"
+    shell:
+        "echo -e '{}' > {{output}}".format('\n'.join(SAMPLES))
+
 
 #
 # copy the supplied reference genome fasta to the pipeline output directory for reference
@@ -195,7 +202,8 @@ rule samtools_flagstat:
 rule picard_mark_dupes:
     input:
         bam=rules.samtools_sort_one.output,
-        idx=rules.samtools_index_one.output        
+        idx=rules.samtools_index_one.output,
+        dct=rules.create_ref_dict.output
     output:
         bam=f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.MD.bam",
         metrics=f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.sort_dup_metrix"
@@ -259,7 +267,9 @@ rule gatk_realign_targets:
     input:
         fa=rules.copy_fasta.output,
         bam=rules.samtools_sort_two.output,
-        idx=rules.samtools_index_two.output
+        idx=rules.samtools_index_two.output,
+        gatk=rules.gatk_register.output,
+        faidx=rules.index_fasta.output
     output:
         f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.bam.intervals'
     conda:
@@ -366,22 +376,11 @@ rule lofreq:
 
 rule finish:
     input:
-        rules.gatk_register.output,
-        rules.index_fasta.output,
-        rules.create_ref_dict.output,
-        
-#         rules.index_ancestor_bam.output,
-
+        rules.list_samples.output,
         rules.run_fastqc_all.output,
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
-
-#         expand(rules.samtools_index_one.output, sample=SAMPLES),
-#         expand(rules.samtools_index_two.output, sample=SAMPLES),
-
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
-#         expand(rules.samtools_index_three.output, sample=SAMPLES),
-
         expand(rules.bcftools_pileup.output, sample=SAMPLES),
         expand(rules.freebayes.output, sample=SAMPLES),
         expand(rules.lofreq.output, sample=SAMPLES),
