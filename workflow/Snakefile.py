@@ -13,6 +13,7 @@ SAMPLES = list(set(glob_wildcards(f"{config['fastq_dir']}/{{sample}}_R1_001.fast
 
 # create a new timestamped output directory for every pipeline run
 OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+# OUTPUT_DIR = f"results/20220923_024004"
 
 # Project name and date for bam header
 SEQID='yevo_pipeline_align'
@@ -370,11 +371,22 @@ rule unzip_lofreq:
     shell:
         "bgzip -d {input.normal} && bgzip -d {input.tumor} && bgzip -d {input.somatic}"
 
-        
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Filtering Steps ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
+#
+# filter samtools results by ancestor
+#
+rule anc_filter_samtools:
+    input:
+        rules.bcftools_pileup.output,
+    output:
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}_samtools_AB_AncFiltered.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        f"bedtools intersect -v -header -a {{input}} -b {config['ancestor_samtools_vcf']} > {{output}}"
 
-        
 
 
 
@@ -391,7 +403,10 @@ rule finish:
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
-        expand(rules.bcftools_pileup.output, sample=SAMPLES),
+#         expand(rules.bcftools_pileup.output, sample=SAMPLES),
+        expand(rules.anc_filter_samtools.output, sample=SAMPLES),
+
+
         expand(rules.freebayes.output, sample=SAMPLES),
         expand(rules.unzip_lofreq.output, sample=SAMPLES),
         
