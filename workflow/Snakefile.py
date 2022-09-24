@@ -347,18 +347,28 @@ rule lofreq:
         idx=rules.samtools_index_three.output,
         ancidx=rules.index_ancestor_bam.output,
     output:
-        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_normal_relaxed.vcf.gz',
-        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_tumor_relaxed.vcf.gz',
-        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_somatic_final.snvs.vcf.gz',
+        normal=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_normal_relaxed.vcf.gz',
+        tumor=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_tumor_relaxed.vcf.gz',
+        somatic=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_somatic_final.snvs.vcf.gz',
     conda:
         'envs/main.yml'
     shell:
         f"lofreq somatic -n {{rules.copy_ancestor_bam.output}} -t {{input.bam}} -f {{rules.copy_fasta.output}} -o {OUTPUT_DIR}/06_variant_calling/{{wildcards.sample}}_lofreq_"
 
 
-
-
-
+rule unzip_lofreq:
+    input:
+        normal=rules.lofreq.output.normal,
+        tumor=rules.lofreq.output.tumor,
+        somatic=rules.lofreq.output.somatic,
+    output:
+        normal=rules.lofreq.output.normal.replace('.vcf.gz', '.vcf'),
+        tumor=rules.lofreq.output.tumor.replace('.vcf.gz', '.vcf'),
+        somatic=rules.lofreq.output.somatic.replace('.vcf.gz', '.vcf'),
+    conda:
+        'envs/main.yml'
+    shell:
+        "bgzip -d {input.normal} && bgzip -d {input.tumor} && bgzip -d {input.somatic}"
 
         
 
@@ -383,7 +393,7 @@ rule finish:
         
         expand(rules.bcftools_pileup.output, sample=SAMPLES),
         expand(rules.freebayes.output, sample=SAMPLES),
-        expand(rules.lofreq.output, sample=SAMPLES),
+        expand(rules.unzip_lofreq.output, sample=SAMPLES),
         
 
     output:
