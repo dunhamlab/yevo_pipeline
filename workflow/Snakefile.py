@@ -387,6 +387,19 @@ rule anc_filter_samtools:
     shell:
         f"bedtools intersect -v -header -a {{input}} -b {config['ancestor_samtools_vcf']} > {{output}}"
 
+#
+# filter samtools results by ancestor
+#
+rule anc_filter_freebayes:
+    input:
+        rules.freebayes.output,
+    output:
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}_freebayes_BCBio_AncFiltered.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        f"bedtools intersect -v -header -a {{input}} -b {config['ancestor_freebayes_vcf']} > {{output}}"
+
 
 
 
@@ -401,13 +414,13 @@ rule finish:
         rules.list_samples.output,
         rules.run_fastqc_all.output,
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
+        
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
-#         expand(rules.bcftools_pileup.output, sample=SAMPLES),
         expand(rules.anc_filter_samtools.output, sample=SAMPLES),
-
-
-        expand(rules.freebayes.output, sample=SAMPLES),
+        expand(rules.anc_filter_freebayes.output, sample=SAMPLES),
+        
+        
         expand(rules.unzip_lofreq.output, sample=SAMPLES),
         
 

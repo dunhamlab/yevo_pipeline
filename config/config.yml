@@ -18,5 +18,6 @@ ref_fasta: 'data/genome/sacCer3.fasta'
 
 # ancestor strain mutations
 ancestor_bam: 'data/ancestor/YMD4612_pink_S1_comb_R1R2.RG.MD.realign.sort.bam'
-
+ancestor_samtools_vcf: 'data/ancestor/YMD4612_pink_S1_samtools_AB_AncFiltered.vcf'
+ancestor_freebayes_vcf: 'data/ancestor/YMD4612_pink_S1_freebayes_BCBio.vcf'
 
