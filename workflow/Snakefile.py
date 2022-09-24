@@ -387,8 +387,9 @@ rule anc_filter_samtools:
     shell:
         f"bedtools intersect -v -header -a {{input}} -b {config['ancestor_samtools_vcf']} > {{output}}"
 
+
 #
-# filter samtools results by ancestor
+# filter freebayes results by ancestor
 #
 rule anc_filter_freebayes:
     input:
@@ -399,6 +400,21 @@ rule anc_filter_freebayes:
         'envs/main.yml'
     shell:
         f"bedtools intersect -v -header -a {{input}} -b {config['ancestor_freebayes_vcf']} > {{output}}"
+
+
+#
+# filter lofreq results by ancestor
+#
+rule anc_filter_lofreq:
+    input:
+        normal=rules.unzip_lofreq.output.normal,
+        tumor=rules.unzip_lofreq.output.tumor,
+    output:
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}_lofreq_tumor_relaxed_AncFiltered.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        f"bedtools intersect -v -header -a {{input.tumor}} -b {{input.normal}} > {{output}}"
 
 
 
@@ -419,9 +435,7 @@ rule finish:
         
         expand(rules.anc_filter_samtools.output, sample=SAMPLES),
         expand(rules.anc_filter_freebayes.output, sample=SAMPLES),
-        
-        
-        expand(rules.unzip_lofreq.output, sample=SAMPLES),
+        expand(rules.anc_filter_lofreq.output, sample=SAMPLES),
         
 
     output:
