@@ -417,6 +417,52 @@ rule anc_filter_lofreq:
         f"bedtools intersect -v -header -a {{input.tumor}} -b {{input.normal}} > {{output}}"
 
 
+# Many filtering steps
+# MQ or MQM = Mapping quality
+# QUAL = Metric that is specific for the variant caller that denotes confidence
+# DP = Read depth
+# DP[x] or SAF,SAR,SRF,SRR = Array with read depth for Fwd, Rev, and from which strand
+# Filters by quality, mapping quality, read depth, number of reads supporting variant, ballence between forward and reverse reads
+
+rule bcftools_filter_samtools:
+    input:
+        rules.anc_filter_samtools.output,
+    output:
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}_samtools_AB_AncFiltered.filt.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "bcftools filter -O v -o {output} -i 'MQ>30 & QUAL>75 & DP>40 & (DP4[2]+DP4[3])>4 & (DP4[0]+DP4[2])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01 & (DP4[1]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01' {input}"
+
+
+rule bcftools_filter_freebayes:
+    input:
+        rules.anc_filter_freebayes.output,
+    output:
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}_freebayes_BCBio_AncFiltered.filt.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "bcftools filter -O v -o {output} -i 'MQM>30 & MQMR>30 & QUAL>20 & INFO/DP>10 & (SAF+SAR)>4 & (SRF+SAF)/(INFO/DP)>0.01 & (SRR+SAR)/(INFO/DP)>0.01' {input}"
+
+
+rule bcftools_filter_lofreq:
+    input:
+        rules.anc_filter_lofreq.output,
+    output:
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}_lofreq_tumor_relaxed_AncFiltered.filt.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "bcftools filter -O v -o {output} -i 'QUAL>20 & DP>20 & (DP4[2]+DP4[3])>4 & (DP4[0]+DP4[2])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01 & (DP4[1]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01' {input}"
+
+
+
+
+
+
+
+
 
 
 
@@ -433,9 +479,9 @@ rule finish:
         
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
-        expand(rules.anc_filter_samtools.output, sample=SAMPLES),
-        expand(rules.anc_filter_freebayes.output, sample=SAMPLES),
-        expand(rules.anc_filter_lofreq.output, sample=SAMPLES),
+        expand(rules.bcftools_filter_samtools.output, sample=SAMPLES),
+        expand(rules.bcftools_filter_freebayes.output, sample=SAMPLES),
+        expand(rules.bcftools_filter_lofreq.output, sample=SAMPLES),
         
 
     output:
