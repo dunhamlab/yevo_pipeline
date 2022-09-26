@@ -10,6 +10,8 @@
 
 Snakemake pipeline for analyzing sequencing data from the [yEvo](https://yevo.org/) project.
 
+![yEvo Pipeline](./docs/img/pipeline.svg)
+
 ## Installation
 
 1. Make sure you have [conda](https://docs.conda.io/en/latest/miniconda.html) installed. 
@@ -28,3 +30,4 @@ $ git clone https://github.com/dunhamlab/yevo_pipeline.git \
     && mamba env create -f environment.yml \
     && conda activate yevo_pipeline_env
 ```
+
