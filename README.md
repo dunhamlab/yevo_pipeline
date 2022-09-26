@@ -10,7 +10,7 @@
 
 Snakemake pipeline for analyzing sequencing data from the [yEvo](https://yevo.org/) project.
 
-![yEvo Pipeline](./docs/img/pipeline.svg)
+![yEvo Pipeline](../../raw/main/docs/img/pipeline.svg)
 
 ## Installation
 
