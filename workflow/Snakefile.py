@@ -160,38 +160,16 @@ rule align_reads:
         r1=f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz",
         r2=f"{config['fastq_dir']}/{{sample}}_R2_001.fastq.gz",
     output:
-        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2.sam"
-    conda:
-        'envs/main.yml'
-    shell:
-        r"""bwa mem -R '@RG\tID:""" + SEQID + r"""\tSM:""" + '{wildcards.sample}' + r"""\tLB:1'""" + ' {rules.copy_fasta.output} {input.r1} {input.r2} > {output}'
-
-
-rule samtools_view:
-    input:
-        rules.align_reads.output
-    output:
-        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2.bam"
-    conda:
-        'envs/main.yml'
-    shell:
-        "samtools view -bS {input} -o {output}"
-
-
-rule samtools_sort_one:
-    input:
-        rules.samtools_view.output
-    output:
         f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2_sort.bam"
     conda:
         'envs/main.yml'
     shell:
-        "samtools sort {input} -o {output}"
-        
+        r"""bwa mem -R '@RG\tID:""" + SEQID + r"""\tSM:""" + '{wildcards.sample}' + r"""\tLB:1'""" + ' {rules.copy_fasta.output} {input.r1} {input.r2} | samtools sort -o {output} -'
+
 
 rule samtools_index_one:
     input:
-        rules.samtools_sort_one.output
+        rules.align_reads.output
     output:
         f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2_sort.bam.bai"
     conda:
@@ -202,7 +180,7 @@ rule samtools_index_one:
 
 rule samtools_flagstat:
     input:
-        bam=rules.samtools_sort_one.output,
+        bam=rules.align_reads.output,
         idx=rules.samtools_index_one.output
     output:
         f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2_sort_flagstat.txt"
@@ -214,7 +192,7 @@ rule samtools_flagstat:
 
 rule picard_mark_dupes:
     input:
-        bam=rules.samtools_sort_one.output,
+        bam=rules.align_reads.output,
         idx=rules.samtools_index_one.output,
         dct=rules.create_ref_dict.output
     output:
