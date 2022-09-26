@@ -529,7 +529,15 @@ rule annotate_lofreq:
         f"python {{params.script}} -f {{input}} -s {config['annotate_sequences']} -n {config['annotate_noncoding']} -g {config['annotate_genome']}"
 
 
-
+rule lofreq_columns:
+    input:
+        rules.annotate_lofreq.output
+    output:
+        f"{rules.annotate_lofreq.output}".replace('.filt.vcf.annotated', '.filt.twoCol.vcf.annotated')
+    conda:
+        'envs/main.yml'
+    shell:
+        r"""awk '$8 = $8 FS "NA NA"' """ + '{input} > {output}'
 
 
 
@@ -550,7 +558,7 @@ rule finish:
         
         expand(rules.annotate_samtools.output, sample=SAMPLES),
         expand(rules.annotate_freebayes.output, sample=SAMPLES),
-        expand(rules.annotate_lofreq.output, sample=SAMPLES),
+        expand(rules.lofreq_columns.output, sample=SAMPLES),
 
         
 
