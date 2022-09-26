@@ -7,8 +7,6 @@ python yeast_annotation.py -f <BED file containing mutations> -s <ORF sequences>
 
 """
 
-print 'HELLO WORLD'
-
 #Chris edits were to make it accept common VCF4.2 headers, and accept variants with N (from Caiti's edits)
 
 def main(BED, orfs, noncoding_file, genome_file):
