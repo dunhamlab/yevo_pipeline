@@ -457,15 +457,35 @@ rule bcftools_filter_lofreq:
         "bcftools filter -O v -o {output} -i 'QUAL>20 & DP>20 & (DP4[2]+DP4[3])>4 & (DP4[0]+DP4[2])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01 & (DP4[1]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01' {input}"
 
 
+#
+# Fitler samtools by freebayes and lofreq
+#
+rule filter_samtools:
+    input:
+        samtools=rules.bcftools_filter_samtools.output,
+        freebayes=rules.bcftools_filter_freebayes.output,
+        lofreq=rules.bcftools_filter_lofreq.output,
+    output:
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}_samtools_AB_AncFiltered.filt.noOverlap.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "bedtools intersect -v -header -a {input.samtools} -b {input.freebayes} {input.lofreq} > {output}"
 
 
-
-
-
-
-
-
-
+#
+# Fitler freebayes by lofreq
+#
+rule filter_freebayes:
+    input:
+        freebayes=rules.bcftools_filter_freebayes.output,
+        lofreq=rules.bcftools_filter_lofreq.output,
+    output:
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}_freebayes_BCBio_AncFiltered.filt.noOverlap.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "bedtools intersect -v -header -a {input.freebayes} -b {input.lofreq} > {output}"
 
 
 
@@ -479,9 +499,11 @@ rule finish:
         
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         
-        expand(rules.bcftools_filter_samtools.output, sample=SAMPLES),
-        expand(rules.bcftools_filter_freebayes.output, sample=SAMPLES),
-        expand(rules.bcftools_filter_lofreq.output, sample=SAMPLES),
+        
+        
+        expand(rules.filter_samtools.output, sample=SAMPLES),
+        expand(rules.filter_freebayes.output, sample=SAMPLES),
+
         
 
     output:
