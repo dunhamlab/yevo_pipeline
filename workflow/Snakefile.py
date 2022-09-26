@@ -4,15 +4,17 @@
 #
 
 import os
+import json
 from datetime import datetime
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Define Constants ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-# discover input files
+# discover input files using path from run config
 SAMPLES = list(set(glob_wildcards(f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz").sample))
 
-# create a new timestamped output directory for every pipeline run
-OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+# read output dir path from run config
+OUTPUT_DIR = config['output_dir']
 
 # Project name and date for bam header
 SEQID='yevo_pipeline_align'
@@ -29,11 +31,22 @@ rule all:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ Set Up Reference Files ~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 #
+# export the current run configuration in JSON format
+#
+rule export_run_config:
+    output:
+        path=f"{OUTPUT_DIR}/00_logs/00_run_config.json"
+    run:
+        with open(output.path, 'w') as outfile:
+            json.dump(dict(config), outfile, indent=4)
+
+
+#
 # make a list of discovered samples
 #
 rule list_samples:
     output:
-        f"{OUTPUT_DIR}/01_ref_files/00_sample_list.txt"
+        f"{OUTPUT_DIR}/00_logs/00_sample_list.txt"
     shell:
         "echo -e '{}' > {{output}}".format('\n'.join(SAMPLES))
 
@@ -147,7 +160,7 @@ rule align_reads:
         r1=f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz",
         r2=f"{config['fastq_dir']}/{{sample}}_R2_001.fastq.gz",
     output:
-        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2.sam"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2.sam"
     conda:
         'envs/main.yml'
     shell:
@@ -158,7 +171,7 @@ rule samtools_view:
     input:
         rules.align_reads.output
     output:
-        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2.bam"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2.bam"
     conda:
         'envs/main.yml'
     shell:
@@ -169,7 +182,7 @@ rule samtools_sort_one:
     input:
         rules.samtools_view.output
     output:
-        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2_sort.bam"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2_sort.bam"
     conda:
         'envs/main.yml'
     shell:
@@ -180,7 +193,7 @@ rule samtools_index_one:
     input:
         rules.samtools_sort_one.output
     output:
-        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2_sort.bam.bai"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2_sort.bam.bai"
     conda:
         'envs/main.yml'
     shell:
@@ -192,7 +205,7 @@ rule samtools_flagstat:
         bam=rules.samtools_sort_one.output,
         idx=rules.samtools_index_one.output
     output:
-        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}_R1R2_sort_flagstat.txt"
+        f"{OUTPUT_DIR}/03_init_alignment/{{sample}}/{{sample}}_R1R2_sort_flagstat.txt"
     conda:
         'envs/main.yml'
     shell:
@@ -205,8 +218,8 @@ rule picard_mark_dupes:
         idx=rules.samtools_index_one.output,
         dct=rules.create_ref_dict.output
     output:
-        bam=f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.MD.bam",
-        metrics=f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.sort_dup_metrix"
+        bam=f"{OUTPUT_DIR}/04_picard/{{sample}}/{{sample}}_comb_R1R2.MD.bam",
+        metrics=f"{OUTPUT_DIR}/04_picard/{{sample}}/{{sample}}_comb_R1R2.sort_dup_metrix"
     conda:
         'envs/main.yml'
     shell:
@@ -217,7 +230,7 @@ rule picard_read_groups:
     input:
         rules.picard_mark_dupes.output.bam
     output:
-        f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.RG.MD.bam",
+        f"{OUTPUT_DIR}/04_picard/{{sample}}/{{sample}}_comb_R1R2.RG.MD.bam",
     conda:
         'envs/main.yml'
     shell:
@@ -229,7 +242,7 @@ rule samtools_sort_two:
     input:
         rules.picard_read_groups.output
     output:
-        f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.RG.MD.sort.bam",
+        f"{OUTPUT_DIR}/04_picard/{{sample}}/{{sample}}_comb_R1R2.RG.MD.sort.bam",
     conda:
         'envs/main.yml'
     shell:
@@ -240,7 +253,7 @@ rule samtools_index_two:
     input:
         rules.samtools_sort_two.output
     output:
-        f"{OUTPUT_DIR}/04_picard/{{sample}}_comb_R1R2.RG.MD.sort.bam.bai",
+        f"{OUTPUT_DIR}/04_picard/{{sample}}/{{sample}}_comb_R1R2.RG.MD.sort.bam.bai",
     conda:
         'envs/main.yml'
     shell:
@@ -271,7 +284,7 @@ rule gatk_realign_targets:
         gatk=rules.gatk_register.output,
         faidx=rules.index_fasta.output
     output:
-        f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.bam.intervals'
+        f'{OUTPUT_DIR}/05_gatk/{{sample}}/{{sample}}_comb_R1R2.bam.intervals'
     conda:
         'envs/main.yml'
     shell:
@@ -285,8 +298,8 @@ rule gatk_realign_indels:
         bam=rules.samtools_sort_two.output,
         idx=rules.samtools_index_two.output        
     output:
-        bam=f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.bam',
-        bai=f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.bai'
+        bam=f'{OUTPUT_DIR}/05_gatk/{{sample}}/{{sample}}_comb_R1R2.RG.MD.realign.bam',
+        bai=f'{OUTPUT_DIR}/05_gatk/{{sample}}/{{sample}}_comb_R1R2.RG.MD.realign.bai'
     conda:
         'envs/main.yml'
     shell:
@@ -297,7 +310,7 @@ rule samtools_sort_three:
     input:
         rules.gatk_realign_indels.output.bam
     output:
-        f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.sort.bam',
+        f'{OUTPUT_DIR}/05_gatk/{{sample}}/{{sample}}_comb_R1R2.RG.MD.realign.sort.bam',
     conda:
         'envs/main.yml'
     shell:
@@ -308,7 +321,7 @@ rule samtools_index_three:
     input:
         rules.samtools_sort_three.output
     output:
-        f'{OUTPUT_DIR}/05_gatk/{{sample}}_comb_R1R2.RG.MD.realign.sort.bam.bai',
+        f'{OUTPUT_DIR}/05_gatk/{{sample}}/{{sample}}_comb_R1R2.RG.MD.realign.sort.bam.bai',
     conda:
         'envs/main.yml'
     shell:
@@ -322,7 +335,7 @@ rule bcftools_pileup:
         bam=rules.samtools_sort_three.output,
         idx=rules.samtools_index_three.output
     output:
-        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_samtools_AB.vcf',
+        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_samtools_AB.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -334,7 +347,7 @@ rule freebayes:
         bam=rules.samtools_sort_three.output,
         idx=rules.samtools_index_three.output
     output:
-        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_freebayes_BCBio.vcf',
+        f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_freebayes_BCBio.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -347,13 +360,13 @@ rule lofreq:
         idx=rules.samtools_index_three.output,
         ancidx=rules.index_ancestor_bam.output,
     output:
-        normal=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_normal_relaxed.vcf.gz',
-        tumor=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_tumor_relaxed.vcf.gz',
-        somatic=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}_lofreq_somatic_final.snvs.vcf.gz',
+        normal=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_normal_relaxed.vcf.gz',
+        tumor=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_tumor_relaxed.vcf.gz',
+        somatic=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_somatic_final.snvs.vcf.gz',
     conda:
         'envs/main.yml'
     shell:
-        f"lofreq somatic -n {{rules.copy_ancestor_bam.output}} -t {{input.bam}} -f {{rules.copy_fasta.output}} -o {OUTPUT_DIR}/06_variant_calling/{{wildcards.sample}}_lofreq_"
+        f"lofreq somatic -n {{rules.copy_ancestor_bam.output}} -t {{input.bam}} -f {{rules.copy_fasta.output}} -o {OUTPUT_DIR}/06_variant_calling/{{wildcards.sample}}/{{wildcards.sample}}_lofreq_"
 
 
 rule unzip_lofreq:
@@ -380,7 +393,7 @@ rule anc_filter_samtools:
     input:
         rules.bcftools_pileup.output,
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}_samtools_AB_AncFiltered.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_AB_AncFiltered.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -394,7 +407,7 @@ rule anc_filter_freebayes:
     input:
         rules.freebayes.output,
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}_freebayes_BCBio_AncFiltered.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_freebayes_BCBio_AncFiltered.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -409,7 +422,7 @@ rule anc_filter_lofreq:
         normal=rules.unzip_lofreq.output.normal,
         tumor=rules.unzip_lofreq.output.tumor,
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}_lofreq_tumor_relaxed_AncFiltered.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_lofreq_tumor_relaxed_AncFiltered.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -427,7 +440,7 @@ rule bcftools_filter_samtools:
     input:
         rules.anc_filter_samtools.output,
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}_samtools_AB_AncFiltered.filt.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_AB_AncFiltered.filt.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -438,7 +451,7 @@ rule bcftools_filter_samtools_two:
     input:
         rules.anc_filter_samtools.output,
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}_samtools_filtered.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_filtered.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -449,7 +462,7 @@ rule bcftools_filter_freebayes:
     input:
         rules.anc_filter_freebayes.output,
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}_freebayes_BCBio_AncFiltered.filt.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_freebayes_BCBio_AncFiltered.filt.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -460,7 +473,7 @@ rule bcftools_filter_lofreq:
     input:
         rules.anc_filter_lofreq.output,
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}_lofreq_tumor_relaxed_AncFiltered.filt.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_lofreq_tumor_relaxed_AncFiltered.filt.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -476,7 +489,7 @@ rule filter_samtools:
         freebayes=rules.bcftools_filter_freebayes.output,
         lofreq=rules.bcftools_filter_lofreq.output,
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}_samtools_AB_AncFiltered.filt.noOverlap.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_AB_AncFiltered.filt.noOverlap.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -491,7 +504,7 @@ rule filter_freebayes:
         freebayes=rules.bcftools_filter_freebayes.output,
         lofreq=rules.bcftools_filter_lofreq.output,
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}_freebayes_BCBio_AncFiltered.filt.noOverlap.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_freebayes_BCBio_AncFiltered.filt.noOverlap.vcf',
     conda:
         'envs/main.yml'
     shell:
@@ -568,6 +581,7 @@ rule lofreq_columns:
 rule finish:
     input:
         # QC steps
+        rules.export_run_config.output,
         rules.list_samples.output,
         rules.run_fastqc_all.output,
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
