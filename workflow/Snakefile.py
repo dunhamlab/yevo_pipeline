@@ -488,6 +488,53 @@ rule filter_freebayes:
         "bedtools intersect -v -header -a {input.freebayes} -b {input.lofreq} > {output}"
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Annotation Steps ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+rule annotate_samtools:
+    input:
+        rules.filter_samtools.output,
+    output:
+        f"{rules.filter_samtools.output}.annotated"
+    conda:
+        'envs/main.yml'
+    params:
+        script=f'{workflow.basedir}/scripts/yeast_annotation_chris_edits_20170925.py'
+    shell:
+        f"python {{params.script}} -f {{input}} -s {config['annotate_sequences']} -n {config['annotate_noncoding']} -g {config['annotate_genome']}"
+
+
+rule annotate_freebayes:
+    input:
+        rules.filter_freebayes.output,
+    output:
+        f"{rules.filter_freebayes.output}.annotated"
+    conda:
+        'envs/main.yml'
+    params:
+        script=f'{workflow.basedir}/scripts/yeast_annotation_chris_edits_20170925.py'
+    shell:
+        f"python {{params.script}} -f {{input}} -s {config['annotate_sequences']} -n {config['annotate_noncoding']} -g {config['annotate_genome']}"
+
+
+rule annotate_lofreq:
+    input:
+        rules.bcftools_filter_lofreq.output,
+    output:
+        f"{rules.bcftools_filter_lofreq.output}.annotated"
+    conda:
+        'envs/main.yml'
+    params:
+        script=f'{workflow.basedir}/scripts/yeast_annotation_chris_edits_20170925.py'
+    shell:
+        f"python {{params.script}} -f {{input}} -s {config['annotate_sequences']} -n {config['annotate_noncoding']} -g {config['annotate_genome']}"
+
+
+
+
+
+
+
+
 
 
 
@@ -501,8 +548,9 @@ rule finish:
         
         
         
-        expand(rules.filter_samtools.output, sample=SAMPLES),
-        expand(rules.filter_freebayes.output, sample=SAMPLES),
+        expand(rules.annotate_samtools.output, sample=SAMPLES),
+        expand(rules.annotate_freebayes.output, sample=SAMPLES),
+        expand(rules.annotate_lofreq.output, sample=SAMPLES),
 
         
 
