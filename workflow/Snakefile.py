@@ -13,7 +13,6 @@ SAMPLES = list(set(glob_wildcards(f"{config['fastq_dir']}/{{sample}}_R1_001.fast
 
 # create a new timestamped output directory for every pipeline run
 OUTPUT_DIR = f"results/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-# OUTPUT_DIR = f"results/20220923_024004"
 
 # Project name and date for bam header
 SEQID='yevo_pipeline_align'
@@ -435,6 +434,17 @@ rule bcftools_filter_samtools:
         "bcftools filter -O v -o {output} -i 'MQ>30 & QUAL>75 & DP>40 & (DP4[2]+DP4[3])>4 & (DP4[0]+DP4[2])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01 & (DP4[1]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01' {input}"
 
 
+rule bcftools_filter_samtools_two:
+    input:
+        rules.anc_filter_samtools.output,
+    output:
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}_samtools_filtered.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "bcftools filter -O v -o {output} -i 'MQ>30 & QUAL>75 & DP>10 & (DP4[2]+DP4[3])>4 & (DP4[2]+DP4[3])/DP>0.3 & (DP4[0]+DP4[2])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01 & (DP4[1]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01' {input}"
+
+
 rule bcftools_filter_freebayes:
     input:
         rules.anc_filter_freebayes.output,
@@ -503,6 +513,19 @@ rule annotate_samtools:
         f"python {{params.script}} -f {{input}} -s {config['annotate_sequences']} -n {config['annotate_noncoding']} -g {config['annotate_genome']}"
 
 
+rule annotate_samtools_two:
+    input:
+        rules.bcftools_filter_samtools_two.output,
+    output:
+        f"{rules.bcftools_filter_samtools_two.output}.annotated"
+    conda:
+        'envs/main.yml'
+    params:
+        script=f'{workflow.basedir}/scripts/yeast_annotation_chris_edits_20170925.py'
+    shell:
+        f"python {{params.script}} -f {{input}} -s {config['annotate_sequences']} -n {config['annotate_noncoding']} -g {config['annotate_genome']}"
+
+
 rule annotate_freebayes:
     input:
         rules.filter_freebayes.output,
@@ -540,28 +563,20 @@ rule lofreq_columns:
         r"""awk '$8 = $8 FS "NA NA"' """ + '{input} > {output}'
 
 
-
-
-
-
-
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Run Pipeline ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 rule finish:
     input:
+        # QC steps
         rules.list_samples.output,
         rules.run_fastqc_all.output,
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
-        
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
-        
-        
-        
+        # variant calling pipeline
         expand(rules.annotate_samtools.output, sample=SAMPLES),
+        expand(rules.annotate_samtools_two.output, sample=SAMPLES),
         expand(rules.annotate_freebayes.output, sample=SAMPLES),
         expand(rules.lofreq_columns.output, sample=SAMPLES),
-
-        
-
     output:
         f'{OUTPUT_DIR}/DONE.txt'
     shell:
