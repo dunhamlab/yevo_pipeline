@@ -3,7 +3,7 @@
 </div>
 
 
-# [IN DEVELOPMENT] yEvo Pipeline
+# yEvo Pipeline
 
 [![Snakemake](./docs/img/snakemake.svg)](https://snakemake.readthedocs.io)
 [![Conda](./docs/img/conda.svg)](https://docs.conda.io/en/latest/miniconda.html)
@@ -31,3 +31,6 @@ $ git clone https://github.com/dunhamlab/yevo_pipeline.git \
     && conda activate yevo_pipeline_env
 ```
 
+## Running the Pipeline
+
+TODO - coming soon!
