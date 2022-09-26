@@ -21,3 +21,9 @@ ancestor_bam: 'data/ancestor/YMD4612_pink_S1_comb_R1R2.RG.MD.realign.sort.bam'
 ancestor_samtools_vcf: 'data/ancestor/YMD4612_pink_S1_samtools_AB_AncFiltered.vcf'
 ancestor_freebayes_vcf: 'data/ancestor/YMD4612_pink_S1_freebayes_BCBio.vcf'
 
+# annotation files
+annotate_sequences: '/net/gs/vol1/home/concamp/workspace/yevo_pipeline/data/annotate/orf_coding_all_R64-1-1_20110203.fasta'
+annotate_noncoding: '/net/gs/vol1/home/concamp/workspace/yevo_pipeline/data/annotate/saccharomyces_cerevisiae_R64-1-1_20110208.gff.filtered'
+annotate_genome: '/net/gs/vol1/home/concamp/workspace/yevo_pipeline/data/annotate/S288C_reference_sequence_R64-1-1_20110203.fsa'
+
+
