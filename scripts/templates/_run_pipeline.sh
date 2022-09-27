@@ -29,8 +29,9 @@ CONFIG_FILE="$REPO_DIR/config/config.yml"
 source activate yevo_pipeline_env
 
 # run the pipeline
-snakemake --snakefile $SNAKE_FILE --configfile $CONFIG_FILE \
-    --config output_dir=$OUTPUT_DIR fastq_dir=$FASTQ_DIR --use-conda --cores
+snakemake --cores --snakefile $SNAKE_FILE --configfile $CONFIG_FILE \
+    --config output_dir=$OUTPUT_DIR fastq_dir=$FASTQ_DIR \
+    --use-conda --conda-prefix="$HOME/.snakemake/conda"
 
 # success
 echo -e "\nDONE!\n"
