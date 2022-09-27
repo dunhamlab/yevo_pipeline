@@ -8,11 +8,6 @@
 #
 ########################################################################
 
-# location of raw reads
-fastq_dir: 'data/fastq/raw'
-# fastq_dir: 'data/fastq/test'
-# fastq_dir: 'data/fastq/test2'
-
 # reference genome
 ref_fasta: 'data/genome/sacCer3.fasta'
 
@@ -25,5 +20,3 @@ ancestor_freebayes_vcf: 'data/ancestor/YMD4612_pink_S1_freebayes_BCBio.vcf'
 annotate_sequences: 'data/annotate/orf_coding_all_R64-1-1_20110203.fasta'
 annotate_noncoding: 'data/annotate/saccharomyces_cerevisiae_R64-1-1_20110208.gff.filtered'
 annotate_genome: 'data/annotate/S288C_reference_sequence_R64-1-1_20110203.fsa'
-
-
