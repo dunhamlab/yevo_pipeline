@@ -1,7 +1,8 @@
 
+# ignore downloaded test data
+data/
 
-
-
+# ignore hidden snakemake files
 .snakemake/
 
 
