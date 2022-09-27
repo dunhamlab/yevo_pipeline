@@ -31,6 +31,12 @@ $ git clone https://github.com/dunhamlab/yevo_pipeline.git \
     && conda activate yevo_pipeline_env
 ```
 
+4. Downloaded required pipeline inputs and test sequencing data:
+
+```
+$ ./scripts/download_test_data.sh
+```
+
 ## Running the Pipeline
 
 TODO - coming soon!
