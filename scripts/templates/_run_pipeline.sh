@@ -17,13 +17,13 @@ OUTPUT_DIR="$REPO_DIR/results/test_run"
 # run pipeline
 #
 
-# go to working directory
-cd $REPO_DIR
-
 # construct pipeline file paths
 LOG_FILE="$OUTPUT_DIR/00_logs/yevo_pipeline.log"
 SNAKE_FILE="$REPO_DIR/workflow/Snakefile.py"
 CONFIG_FILE="$REPO_DIR/config/config.yml"
+
+# go to working directory
+cd $REPO_DIR
 
 # activate conda env
 source activate yevo_pipeline_env
