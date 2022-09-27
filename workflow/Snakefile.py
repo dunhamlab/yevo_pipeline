@@ -136,7 +136,7 @@ rule run_fastqc_all:
     conda:
         'envs/main.yml'
     shell:
-        f'zcat {input}/*.fastq.gz | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc/all_samples/'
+        f'cat {input}/*.fastq.gz | zcat | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc/all_samples/'
         
 
 rule run_fastqc_persample:
@@ -149,7 +149,7 @@ rule run_fastqc_persample:
     conda:
         'envs/main.yml'
     shell:
-        f"zcat {{input}} | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc/{{wildcards.sample}}"
+        f"cat {{input}} | zcat | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc/{{wildcards.sample}}"
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~ Perform Initial Alignment ~~~~~~~~~~~~~~~~~~~~~~~~ #
