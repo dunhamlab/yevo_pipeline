@@ -208,28 +208,16 @@ rule picard_read_groups:
     input:
         rules.picard_mark_dupes.output.bam
     output:
-        f"{OUTPUT_DIR}/04_picard/{{sample}}/{{sample}}_comb_R1R2.RG.MD.bam",
-    conda:
-        'envs/main.yml'
-    shell:
-        f"picard AddOrReplaceReadGroups --INPUT {{input}} --OUTPUT {{output}} --RGID {SEQID} --RGLB 1 --RGPU 1 --RGPL illumina --RGSM {{wildcards.sample}} --VALIDATION_STRINGENCY LENIENT"
-
-
-
-rule samtools_sort_two:
-    input:
-        rules.picard_read_groups.output
-    output:
         f"{OUTPUT_DIR}/04_picard/{{sample}}/{{sample}}_comb_R1R2.RG.MD.sort.bam",
     conda:
         'envs/main.yml'
     shell:
-        "samtools sort {input} -o {output}"
+        f"picard AddOrReplaceReadGroups --INPUT {{input}} --OUTPUT /dev/stdout --RGID {SEQID} --RGLB 1 --RGPU 1 --RGPL illumina --RGSM {{wildcards.sample}} --VALIDATION_STRINGENCY LENIENT | samtools sort -o {{output}} -"
 
 
 rule samtools_index_two:
     input:
-        rules.samtools_sort_two.output
+        rules.picard_read_groups.output
     output:
         f"{OUTPUT_DIR}/04_picard/{{sample}}/{{sample}}_comb_R1R2.RG.MD.sort.bam.bai",
     conda:
@@ -257,7 +245,7 @@ rule gatk_register:
 rule gatk_realign_targets:
     input:
         fa=rules.copy_fasta.output,
-        bam=rules.samtools_sort_two.output,
+        bam=rules.picard_read_groups.output,
         idx=rules.samtools_index_two.output,
         gatk=rules.gatk_register.output,
         faidx=rules.index_fasta.output
@@ -273,7 +261,7 @@ rule gatk_realign_indels:
     input:
         fa=rules.copy_fasta.output,
         intervals=rules.gatk_realign_targets.output,
-        bam=rules.samtools_sort_two.output,
+        bam=rules.picard_read_groups.output,
         idx=rules.samtools_index_two.output        
     output:
         bam=f'{OUTPUT_DIR}/05_gatk/{{sample}}/{{sample}}_comb_R1R2.RG.MD.realign.bam',
