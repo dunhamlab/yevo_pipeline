@@ -5,6 +5,9 @@ run_pipeline.sh
 # ignore downloaded test data
 data/
 
+# ignore pipeline outputs
+results/
+
 # ignore hidden snakemake files
 .snakemake/
 
