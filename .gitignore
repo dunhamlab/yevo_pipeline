@@ -1,4 +1,7 @@
 
+# ignore auto-generated run script
+run_pipeline.sh
+
 # ignore downloaded test data
 data/
 
