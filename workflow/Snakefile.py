@@ -410,7 +410,7 @@ rule bcftools_filter_samtools:
     conda:
         'envs/main.yml'
     shell:
-        "bcftools filter -O v -o {output} -i 'MQ>30 & QUAL>75 & DP>40 & (DP4[2]+DP4[3])>4 & (DP4[0]+DP4[2])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01 & (DP4[1]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01' {input}"
+        "bcftools filter -O v -o {output} -i 'MQ>30 & QUAL>80 & DP>40 & (DP4[2]+DP4[3])>4 & (DP4[0]+DP4[2])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01 & (DP4[1]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01' {input}"
 
 
 rule bcftools_filter_samtools_two:
@@ -421,7 +421,7 @@ rule bcftools_filter_samtools_two:
     conda:
         'envs/main.yml'
     shell:
-        "bcftools filter -O v -o {output} -i 'MQ>30 & QUAL>75 & DP>10 & (DP4[2]+DP4[3])>4 & (DP4[2]+DP4[3])/DP>0.3 & (DP4[0]+DP4[2])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01 & (DP4[1]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01' {input}"
+        "bcftools filter -O v -o {output} -i 'MQ>30 & QUAL>80 & DP>15 & (DP4[2]+DP4[3])>4 & (DP4[2]+DP4[3])/DP>0.3 & (DP4[0]+DP4[2])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01 & (DP4[1]+DP4[3])/(DP4[0]+DP4[1]+DP4[2]+DP4[3])>0.01' {input}"
 
 
 rule bcftools_filter_freebayes:
@@ -432,7 +432,7 @@ rule bcftools_filter_freebayes:
     conda:
         'envs/main.yml'
     shell:
-        "bcftools filter -O v -o {output} -i 'MQM>30 & MQMR>30 & QUAL>20 & INFO/DP>10 & (SAF+SAR)>4 & (SRF+SAF)/(INFO/DP)>0.01 & (SRR+SAR)/(INFO/DP)>0.01' {input}"
+        "bcftools filter -O v -o {output} -i 'MQM>30 & MQMR>30 & QUAL>20 & INFO/DP>15 & (SAF+SAR)>4 & (SRF+SAF)/(INFO/DP)>0.01 & (SRR+SAR)/(INFO/DP)>0.01' {input}"
 
 
 rule bcftools_filter_lofreq:
