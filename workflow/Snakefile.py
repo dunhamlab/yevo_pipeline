@@ -19,6 +19,8 @@ OUTPUT_DIR = config['output_dir']
 # Project name and date for bam header
 SEQID='yevo_pipeline_align'
 
+ANCESTOR = list(set(glob_wildcards(f"{config['anc_dir']}/{{sample}}_R1_001.fastq.gz").sample))
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Pipeline ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
