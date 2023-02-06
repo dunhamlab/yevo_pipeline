@@ -10,6 +10,7 @@ REPO_DIR="{{BASE_DIR}}"
 # absolute path to fastq.gz location (e.g. <sample>_R1_001.fastq.gz files)
 FASTQ_DIR="$REPO_DIR/data/fastq"
 
+ANC_DIR = "$REPO_DIR/data/ancestor"
 # absolute path to desired pipeline output directory (will be created by snakemake)
 OUTPUT_DIR="$REPO_DIR/results/test_run"
 
