@@ -8,15 +8,28 @@
 #
 ########################################################################
 
+
+# absolute path to the cloned yevo_pipeline repo
+REPO_DIR="/net/dunham/vol1/home/dennig2/yevo_pipeline"
+
 # reference genome
-ref_fasta: 'data/genome/sacCer3.fasta'
+REF_FASTA ="$REPO_DIR/data/genome/sacCer3.fasta"
 
-# ancestor strain mutations
-ancestor_bam: 'data/ancestor/YMD4612_pink_S1_comb_R1R2.RG.MD.realign.sort.bam'
-ancestor_samtools_vcf: 'data/ancestor/YMD4612_pink_S1_samtools_AB_AncFiltered.vcf'
-ancestor_freebayes_vcf: 'data/ancestor/YMD4612_pink_S1_freebayes_BCBio.vcf'
+# absolute path to fastq.gz location (e.g. <sample>_R1_001.fastq.gz files)
+FASTQ_DIR="$REPO_DIR/pipelinetest/fastq"
 
-# annotation files
-annotate_sequences: 'data/annotate/orf_coding_all_R64-1-1_20110203.fasta'
-annotate_noncoding: 'data/annotate/saccharomyces_cerevisiae_R64-1-1_20110208.gff.filtered'
-annotate_genome: 'data/annotate/S288C_reference_sequence_R64-1-1_20110203.fsa'
+# absolute path to desired pipeline output directory (will be created by snakemake)
+OUTPUT_DIR="$REPO_DIR/pipelineoutput"
+ANC_DIR="$REPO_DIR/pipelineanc"
+#
+# run pipeline
+#
+
+# construct pipeline file paths
+LOG_FILE="$OUTPUT_DIR/00_logs/yevo_pipeline.log"
+SNAKE_FILE="$REPO_DIR/workflow/Snakefile.py"
+CONFIG_FILE="$REPO_DIR/config/config.yml"
+
+# go to working directory
+cd $REPO_DIR
+
