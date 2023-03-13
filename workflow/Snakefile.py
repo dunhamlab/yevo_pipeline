@@ -1,4 +1,3 @@
-
 #
 # yEvo Pipeline
 #
@@ -6,7 +5,7 @@
 import os
 import json
 from datetime import datetime
-
+from glob import iglob
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Define Constants ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -14,10 +13,16 @@ from datetime import datetime
 SAMPLES = list(set(glob_wildcards(f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz").sample))
 
 # read output dir path from run config
-OUTPUT_DIR = config['output_dir']
+OUTPUT_DIR = f"{config['output_dir']}"
 
 # Project name and date for bam header
 SEQID='yevo_pipeline_align'
+
+#config['anc_r'] = list(set(glob_wildcards(f"{config['anc_dir']}/{{anc_r}}_R1_001.fastq.gz").anc_r))
+
+
+anc_r = "/net/dunham/vol1/home/dennig2/yevo_pipeline/pipelineanc"
+anc_t = "anc"
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Pipeline ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -85,29 +90,6 @@ rule create_ref_dict:
         "picard CreateSequenceDictionary -R {input}"
 
 #
-# copy the supplied reference genome fasta to the pipeline output directory for reference
-#
-rule copy_ancestor_bam:
-    input:
-        config['ancestor_bam']
-    output:
-        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ancestor_bam'])}"
-    shell:
-        "cp {input} {output}"
-
-
-rule index_ancestor_bam:
-    input:
-        rules.copy_ancestor_bam.output
-    output:
-        f"{rules.copy_ancestor_bam.output}.bai"
-    conda:
-        'envs/main.yml'
-    shell:
-        "samtools index {input}"
-
-
-#
 # create a BWA index from the copied fasta reference genome
 #
 rule create_bwa_index:
@@ -122,34 +104,208 @@ rule create_bwa_index:
     conda:
         'envs/main.yml'
     shell:
-        "bwa index {input}"
+        "bwa index {input}"        
 
-        
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~ Run QC on Raw Reads ~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+#
+# Get the ancestor BAM
+#
 
-rule run_fastqc_all:
+
+
+rule align_reads_anc:
     input:
-        config['fastq_dir']
+        rules.create_bwa_index.output,
+        R1= f"{anc_r}/YMD4612_pink_S1_R1_001.fastq.gz",
+        R2= f"{anc_r}/YMD4612_pink_S1_R1_001.fastq.gz",
     output:
-        f'{OUTPUT_DIR}/02_fastqc/all_samples/stdin_fastqc.html',
-        f'{OUTPUT_DIR}/02_fastqc/all_samples/stdin_fastqc.zip',
+        bam=f"{OUTPUT_DIR}/03_init_alignment/{anc_t}/{anc_t}_R1R2_sort.bam",
+        
     conda:
         'envs/main.yml'
     shell:
-        f'cat {input}/*.fastq.gz | zcat | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc/all_samples/'
-        
+        r"""bwa mem -R '@RG\tID:""" + SEQID + r"""\tSM:""" + '{anc_t}' + r"""\tLB:1'""" + ' {rules.copy_fasta.output} {input.R1} {input.R2} | samtools sort -o {output.bam} - && samtools index {output.bam}'
 
-rule run_fastqc_persample:
+rule samtools_index_one_anc:
     input:
-        f"{config['fastq_dir']}/{{sample}}_R1_001.fastq.gz",
-        f"{config['fastq_dir']}/{{sample}}_R2_001.fastq.gz",
+        rules.align_reads_anc.output
     output:
-        f"{OUTPUT_DIR}/02_fastqc/{{sample}}/stdin_fastqc.html",
-        f"{OUTPUT_DIR}/02_fastqc/{{sample}}/stdin_fastqc.zip"
+        f"{OUTPUT_DIR}/03_init_alignment/{anc_t}/{anc_t}_R1R2_sort.bam.bai"
     conda:
         'envs/main.yml'
     shell:
-        f"cat {{input}} | zcat | fastqc stdin --outdir={OUTPUT_DIR}/02_fastqc/{{wildcards.sample}}"
+        "samtools index {input}"
+        
+
+rule samtools_flagstat_anc:
+    input:
+        bam=rules.align_reads_anc.output,
+        idx=rules.samtools_index_one_anc.output
+    output:
+        f"{OUTPUT_DIR}/03_init_alignment/{anc_t}/{anc_t}_R1R2_sort_flagstat.txt"
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools flagstat {input.bam} > {output}"
+
+
+rule picard_mark_dupes_anc:
+    input:
+        bam=rules.align_reads_anc.output,
+        idx=rules.samtools_index_one_anc.output,
+        dct=rules.create_ref_dict.output
+    output:
+        bam=f"{OUTPUT_DIR}/04_picard/{anc_t}/{anc_t}_comb_R1R2.MD.bam",
+        metrics=f"{OUTPUT_DIR}/04_picard/{anc_t}/{anc_t}_comb_R1R2.sort_dup_metrix"
+    conda:
+        'envs/main.yml'
+    shell:
+        "picard MarkDuplicates --INPUT {input.bam} --OUTPUT {output.bam} --METRICS_FILE {output.metrics} --REMOVE_DUPLICATES true --VALIDATION_STRINGENCY LENIENT"
+
+
+rule picard_read_groups_anc:
+    input:
+        rules.picard_mark_dupes_anc.output.bam
+    output:
+        f"{OUTPUT_DIR}/04_picard/{anc_t}/{anc_t}_comb_R1R2.RG.MD.sort.bam",
+    conda:
+        'envs/main.yml'
+    shell:
+        f"picard AddOrReplaceReadGroups --INPUT {{input}} --OUTPUT /dev/stdout --RGID {SEQID} --RGLB 1 --RGPU 1 --RGPL illumina --RGSM {anc_t} --VALIDATION_STRINGENCY LENIENT | samtools sort -o {{output}} -"
+
+
+rule samtools_index_two_anc:
+    input:
+        rules.picard_read_groups_anc.output
+    output:
+        f"{OUTPUT_DIR}/04_picard/{anc_t}/{anc_t}_comb_R1R2.RG.MD.sort.bam.bai",
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools index {input}"
+
+rule gatk_register:
+    input:
+        f'workflow/envs/src/GenomeAnalysisTK-3.7-0-gcfedb67.tar.bz2'
+    output:
+        f'{OUTPUT_DIR}/05_gatk/gatk_3.7_registered.txt'
+    conda:
+        'envs/main.yml'
+    shell:
+        "gatk-register {input} > {output}"
+
+rule gatk_realign_targets_anc:
+    input:
+        fa=rules.copy_fasta.output,
+        bam=rules.picard_read_groups_anc.output,
+        idx=rules.samtools_index_two_anc.output,
+        gatk=rules.gatk_register.output,
+        faidx=rules.index_fasta.output
+    output:
+        f'{OUTPUT_DIR}/05_gatk/{anc_t}/{anc_t}_comb_R1R2.bam.intervals'
+    conda:
+        'envs/main.yml'
+    shell:
+        "GenomeAnalysisTK -T RealignerTargetCreator -R {input.fa} -I {input.bam} -o {output}"
+
+
+rule gatk_realign_indels_anc:
+    input:
+        fa=rules.copy_fasta.output,
+        intervals=rules.gatk_realign_targets_anc.output,
+        bam=rules.picard_read_groups_anc.output,
+        idx=rules.samtools_index_two_anc.output        
+    output:
+        bam=f'{OUTPUT_DIR}/05_gatk/{anc_t}/{anc_t}_comb_R1R2.RG.MD.realign.bam',
+        bai=f'{OUTPUT_DIR}/05_gatk/{anc_t}/{anc_t}_comb_R1R2.RG.MD.realign.bai'
+    conda:
+        'envs/main.yml'
+    shell:
+        "GenomeAnalysisTK -T IndelRealigner -R {input.fa} -I {input.bam} -targetIntervals {input.intervals} -o {output.bam}"
+
+
+rule samtools_sort_three_anc:
+    input:
+        rules.gatk_realign_indels_anc.output.bam
+    output:
+        f'{OUTPUT_DIR}/05_gatk/{anc_t}/{anc_t}_comb_R1R2.RG.MD.realign.sort.bam',
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools sort {input} -o {output}"
+
+
+rule samtools_index_three_anc:
+    input:
+        rules.samtools_sort_three_anc.output
+    output:
+        f'{OUTPUT_DIR}/05_gatk/{anc_t}/{anc_t}_comb_R1R2.RG.MD.realign.sort.bam.bai',
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools index {input}"
+
+rule index_ancestor_bam:
+    input:
+        rules.samtools_sort_three_anc.output
+    output:
+        f"{anc_t}.bai"
+    conda:
+        'envs/main.yml'
+    shell:
+        "samtools index {input}"
+
+rule bcftools_pileup_anc:
+    input:
+        bam=rules.samtools_sort_three_anc.output,
+        idx=rules.samtools_index_three_anc.output
+    output:
+        f'{OUTPUT_DIR}/06_variant_calling/{anc_t}/{anc_t}_samtools_AB.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "bcftools mpileup --ignore-RG -Ou -ABf {rules.copy_fasta.output} {input.bam} | bcftools call -vmO v -o {output}"
+
+rule freebayes_anc:
+    input:
+        bam=rules.samtools_sort_three_anc.output,
+        idx=rules.samtools_index_three_anc.output
+    output:
+        f'{OUTPUT_DIR}/06_variant_calling/{anc_t}/{anc_t}_freebayes_BCBio.vcf',
+    conda:
+        'envs/main.yml'
+    shell:
+        "freebayes -f {rules.copy_fasta.output} --pooled-discrete --pooled-continuous --report-genotype-likelihood-max --allele-balance-priors-off --min-alternate-fraction 0.1 {input.bam} > {output}"
+
+rule lofreq_anc:
+    input:
+        bam=rules.samtools_sort_three_anc.output,
+        idx=rules.samtools_index_three_anc.output,
+        ancidx=rules.index_ancestor_bam.output,
+    output:
+        normal=f'{OUTPUT_DIR}/06_variant_calling/{anc_t}/{anc_t}_lofreq_normal_relaxed.vcf.gz',
+        tumor=f'{OUTPUT_DIR}/06_variant_calling/{anc_t}/{anc_t}_lofreq_tumor_relaxed.vcf.gz',
+        somatic=f'{OUTPUT_DIR}/06_variant_calling/{anc_t}/{anc_t}_lofreq_somatic_final.snvs.vcf.gz',
+    conda:
+        'envs/main.yml'
+    shell:
+        f"lofreq somatic -n {{input.bam}} -t {{input.bam}} -f {{rules.copy_fasta.output}} -o {OUTPUT_DIR}/06_variant_calling/{anc_t}/{anc_t}_lofreq_"
+
+rule unzip_lofreq_anc:
+    input:
+        normal=rules.lofreq_anc.output.normal,
+        tumor=rules.lofreq_anc.output.tumor,
+        somatic=rules.lofreq_anc.output.somatic,
+    output:
+        normal=rules.lofreq_anc.output.normal.replace('.vcf.gz', '.vcf'),
+        tumor=rules.lofreq_anc.output.tumor.replace('.vcf.gz', '.vcf'),
+        somatic=rules.lofreq_anc.output.somatic.replace('.vcf.gz', '.vcf'),
+    conda:
+        'envs/main.yml'
+    shell:
+        "bgzip -d {input.normal} && bgzip -d {input.tumor} && bgzip -d {input.somatic}"
+
+
+
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~ Perform Initial Alignment ~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -231,15 +387,7 @@ rule samtools_index_two:
 #
 #  configure gatk-3.7 inside conda environment
 #
-rule gatk_register:
-    input:
-        f'workflow/envs/src/GenomeAnalysisTK-3.7-0-gcfedb67.tar.bz2'
-    output:
-        f'{OUTPUT_DIR}/05_gatk/gatk_3.7_registered.txt'
-    conda:
-        'envs/main.yml'
-    shell:
-        "gatk-register {input} > {output}"
+
 
 
 rule gatk_realign_targets:
@@ -328,11 +476,12 @@ rule lofreq:
     output:
         normal=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_normal_relaxed.vcf.gz',
         tumor=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_tumor_relaxed.vcf.gz',
-        somatic=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_somatic_final.snvs.vcf.gz',
+        somatic=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_somatic_final.vcf.gz',
     conda:
         'envs/main.yml'
     shell:
-        f"lofreq somatic -n {{rules.copy_ancestor_bam.output}} -t {{input.bam}} -f {{rules.copy_fasta.output}} -o {OUTPUT_DIR}/06_variant_calling/{{wildcards.sample}}/{{wildcards.sample}}_lofreq_"
+        f"lofreq somatic -n {{rules.copy_ancestor_bam.output}} -t {{input.bam}} -f {{rules.copy_fasta.output}} -o {{output.somatic}} && "
+        f"bgzip {{output.normal}} && bgzip {{output.tumor}} && bgzip {{output.somatic}}"
 
 
 rule unzip_lofreq:
@@ -353,17 +502,18 @@ rule unzip_lofreq:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Filtering Steps ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 #
-# filter samtools results by ancestor
+# filter samtools results by ancestor, took normal from the output
 #
 rule anc_filter_samtools:
     input:
-        rules.bcftools_pileup.output,
+        sample=rules.bcftools_pileup.output,
+        anc=rules.unzip_lofreq_anc.output.normal
     output:
         f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_AB_AncFiltered.vcf',
     conda:
         'envs/main.yml'
     shell:
-        f"bedtools intersect -v -header -a {{input}} -b {config['ancestor_samtools_vcf']} > {{output}}"
+        f"bedtools intersect -v -header -a {{input.sample}} -b {{input.anc}} > {{output}}"
 
 
 #
@@ -371,13 +521,14 @@ rule anc_filter_samtools:
 #
 rule anc_filter_freebayes:
     input:
-        rules.freebayes.output,
+        sample=rules.freebayes.output,
+        anc=rules.freebayes_anc.output
     output:
         f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_freebayes_BCBio_AncFiltered.vcf',
     conda:
         'envs/main.yml'
     shell:
-        f"bedtools intersect -v -header -a {{input}} -b {config['ancestor_freebayes_vcf']} > {{output}}"
+        f"bedtools intersect -v -header -a {{input.sample}} -b {{input.anc}} > {{output}}"
 
 
 #
@@ -549,8 +700,8 @@ rule finish:
         # QC steps
         rules.export_run_config.output,
         rules.list_samples.output,
-        rules.run_fastqc_all.output,
-        expand(rules.run_fastqc_persample.output, sample=SAMPLES),
+        #rules.run_fastqc_all.output,
+        #expand(rules.run_fastqc_persample.output, sample=SAMPLES),
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         # variant calling pipeline
         expand(rules.annotate_samtools.output, sample=SAMPLES),
