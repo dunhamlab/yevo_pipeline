@@ -1,0 +1,31 @@
+This pipeline takes in FASTA sequences, and spits out SNPs. 
+
+How it works: 
+
+Sample names are going to be put in a list, and the pipeline is going to iterate through the list. 
+
+A reference genome is also needed, so that samples will be aligned. The reference is indexed before alignment. 
+A reference dict is also created for use of the GATK algorithm. BWA index is also run per sample. 
+
+Then, a bunch of alignment happens.
+
+  
+Samples are then run through lofreq, freebayes, and samtools. 
+
+Anc mutations are filtered out. 
+
+Lastly, annotated files are output. 
+
+What you need: 
+
+In the data folder: 
+Your fastqs go in the fastq folder, even your ancestor. Once inside the fastq folder, rename your ancestor reads to anc_R1_001.fastq.gz and anc_R2_001.fastq.gz. All other files should have either _R1_001.fastq.gz or _R2_001.fastq.gz in their file name.   Your reference genome goes in the genome folder. 
+
+In the config folder, in the config.yml you will alter: 
+All fields to update where the files are currently located. 
+
+The run_pipeline.sh script: 
+Change the REPO_DIR, OUTPUT_DIR, and the FASTQ_DIR. 
+
+To run the pipeline, you are going to ssh into grid and then type "qsub run_pipeline.sh" to submit to the queue. Make sure your fastqs are in the fastq folder beforehand. 
+Run time is approximately proprotional to number of samples. 1 sample takes about 1 hour from start to finish. 
