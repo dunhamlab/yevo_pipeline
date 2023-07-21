@@ -1,0 +1,8 @@
+name: chris_env
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - python=2.7
+  - biopython
