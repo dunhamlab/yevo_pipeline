@@ -19,6 +19,8 @@ OUTPUT_DIR = config['output_dir']
 # Project name and date for bam header
 SEQID='yevo_pipeline_align'
 
+REF_DIR = config['ref_fasta']
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Pipeline ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -58,67 +60,49 @@ rule copy_fasta:
     input:
         config['ref_fasta']
     output:
-        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ref_fasta'])}"
+        f"{OUTPUT_DIR}/01_ref_files/reference"
     shell:
-        "cp {input} {output}"
+        "cp {input} {output} && chmod 777 {output}"
 
-
-rule index_fasta:
+rule copy_fasta_file:
     input:
-        rules.copy_fasta.output
+        ref=f"{REF_DIR}"
     output:
-        f"{rules.copy_fasta.output}.fai"
+        f"{OUTPUT_DIR}/01_ref_files/reference.fasta"   
+    shell:
+        "cp {input.ref} {output} && chmod 777 {output}"
+
+rule index_fasta_file:
+    input:
+        rules.copy_fasta_file.output
+    output:
+        f"{rules.copy_fasta_file.output}.fai"
     conda:
         'envs/main.yml'
     shell:
         "samtools faidx {input}"
 
-
 rule create_ref_dict:
     input:
-        rules.copy_fasta.output
+        rules.copy_fasta_file.output
     output:
-        f"{rules.copy_fasta.output}".rstrip('fasta') + 'dict'
+        f"{OUTPUT_DIR}/01_ref_files/reference.dict"     
     conda:
         'envs/main.yml'
     shell:
-        "picard CreateSequenceDictionary -R {input}"
+        "picard CreateSequenceDictionary -R {input} -O {output} && chmod 777 {output}"
 
-#
-# copy the supplied reference genome fasta to the pipeline output directory for reference
-#
-rule copy_ancestor_bam:
-    input:
-        config['ancestor_bam']
-    output:
-        f"{OUTPUT_DIR}/01_ref_files/{os.path.basename(config['ancestor_bam'])}"
-    shell:
-        "cp {input} {output}"
-
-
-rule index_ancestor_bam:
-    input:
-        rules.copy_ancestor_bam.output
-    output:
-        f"{rules.copy_ancestor_bam.output}.bai"
-    conda:
-        'envs/main.yml'
-    shell:
-        "samtools index {input}"
-
-
-#
 # create a BWA index from the copied fasta reference genome
 #
 rule create_bwa_index:
     input:
-        rules.copy_fasta.output
+        rules.copy_fasta_file.output
     output:
-        f"{rules.copy_fasta.output}.amb",
-        f"{rules.copy_fasta.output}.ann",
-        f"{rules.copy_fasta.output}.bwt",
-        f"{rules.copy_fasta.output}.pac",
-        f"{rules.copy_fasta.output}.sa",
+        f"{rules.copy_fasta_file.output}.amb",
+        f"{rules.copy_fasta_file.output}.ann",
+        f"{rules.copy_fasta_file.output}.bwt",
+        f"{rules.copy_fasta_file.output}.pac",
+        f"{rules.copy_fasta_file.output}.sa",
     conda:
         'envs/main.yml'
     shell:
@@ -164,7 +148,7 @@ rule align_reads:
     conda:
         'envs/main.yml'
     shell:
-        r"""bwa mem -R '@RG\tID:""" + SEQID + r"""\tSM:""" + '{wildcards.sample}' + r"""\tLB:1'""" + ' {rules.copy_fasta.output} {input.r1} {input.r2} | samtools sort -o {output} -'
+        r"""bwa mem -R '@RG\tID:""" + SEQID + r"""\tSM:""" + '{wildcards.sample}' + r"""\tLB:1'""" + ' {rules.copy_fasta_file.output} {input.r1} {input.r2} | samtools sort -o {output} -'
 
 
 rule samtools_index_one:
@@ -228,9 +212,7 @@ rule samtools_index_two:
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ GATK Re-alignment ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-#
-#  configure gatk-3.7 inside conda environment
-#
+
 rule gatk_register:
     input:
         f'workflow/envs/src/GenomeAnalysisTK-3.7-0-gcfedb67.tar.bz2'
@@ -239,16 +221,16 @@ rule gatk_register:
     conda:
         'envs/main.yml'
     shell:
-        "gatk-register {input} > {output}"
+        "gatk-register {input} > {output} && chmod 777 {output}"
 
 
 rule gatk_realign_targets:
     input:
-        fa=rules.copy_fasta.output,
+        fa=rules.copy_fasta_file.output,
         bam=rules.picard_read_groups.output,
         idx=rules.samtools_index_two.output,
         gatk=rules.gatk_register.output,
-        faidx=rules.index_fasta.output
+        faidx=rules.index_fasta_file.output
     output:
         f'{OUTPUT_DIR}/05_gatk/{{sample}}/{{sample}}_comb_R1R2.bam.intervals'
     conda:
@@ -259,7 +241,7 @@ rule gatk_realign_targets:
 
 rule gatk_realign_indels:
     input:
-        fa=rules.copy_fasta.output,
+        fa=rules.copy_fasta_file.output,
         intervals=rules.gatk_realign_targets.output,
         bam=rules.picard_read_groups.output,
         idx=rules.samtools_index_two.output        
@@ -305,7 +287,7 @@ rule bcftools_pileup:
     conda:
         'envs/main.yml'
     shell:
-        "bcftools mpileup --ignore-RG -Ou -ABf {rules.copy_fasta.output} {input.bam} | bcftools call -vmO v -o {output}"
+        "bcftools mpileup --ignore-RG -Ou -ABf {rules.copy_fasta_file.output} {input.bam} | bcftools call -vmO v -o {output}"
 
 
 rule freebayes:
@@ -317,14 +299,15 @@ rule freebayes:
     conda:
         'envs/main.yml'
     shell:
-        "freebayes -f {rules.copy_fasta.output} --pooled-discrete --pooled-continuous --report-genotype-likelihood-max --allele-balance-priors-off --min-alternate-fraction 0.1 {input.bam} > {output}"
+        "freebayes -f {rules.copy_fasta_file.output} --pooled-discrete --pooled-continuous --report-genotype-likelihood-max --allele-balance-priors-off --min-alternate-fraction 0.1 {input.bam} > {output}"
 
 
 rule lofreq:
     input:
         bam=rules.samtools_sort_three.output,
         idx=rules.samtools_index_three.output,
-        ancidx=rules.index_ancestor_bam.output,
+        ancidx=f'{OUTPUT_DIR}/05_gatk/anc/anc_comb_R1R2.RG.MD.realign.sort.bam.bai',
+        ancbam=f'{OUTPUT_DIR}/05_gatk/anc/anc_comb_R1R2.RG.MD.realign.sort.bam'
     output:
         normal=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_normal_relaxed.vcf.gz',
         tumor=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_tumor_relaxed.vcf.gz',
@@ -332,7 +315,7 @@ rule lofreq:
     conda:
         'envs/main.yml'
     shell:
-        f"lofreq somatic -n {{rules.copy_ancestor_bam.output}} -t {{input.bam}} -f {{rules.copy_fasta.output}} -o {OUTPUT_DIR}/06_variant_calling/{{wildcards.sample}}/{{wildcards.sample}}_lofreq_"
+        f"lofreq somatic -n {{input.ancbam}} -t {{input.bam}} -f {{rules.copy_fasta_file.output}} -o {OUTPUT_DIR}/06_variant_calling/{{wildcards.sample}}/{{wildcards.sample}}_lofreq_"
 
 
 rule unzip_lofreq:
@@ -357,13 +340,14 @@ rule unzip_lofreq:
 #
 rule anc_filter_samtools:
     input:
-        rules.bcftools_pileup.output,
+        sample=rules.bcftools_pileup.output,
+        anc=f'{OUTPUT_DIR}/06_variant_calling/anc/anc_lofreq_normal_relaxed.vcf'
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_AB_AncFiltered.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_AB_AncFiltered.vcf',    
     conda:
         'envs/main.yml'
     shell:
-        f"bedtools intersect -v -header -a {{input}} -b {config['ancestor_samtools_vcf']} > {{output}}"
+        f"bedtools intersect -v -header -a {{input.sample}} -b {{input.anc}} > {{output}}"
 
 
 #
@@ -371,13 +355,15 @@ rule anc_filter_samtools:
 #
 rule anc_filter_freebayes:
     input:
-        rules.freebayes.output,
+        sample=rules.freebayes.output,
+        anc=f'{OUTPUT_DIR}/06_variant_calling/anc/anc_freebayes_BCBio.vcf'
     output:
-        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_freebayes_BCBio_AncFiltered.vcf',
+        f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_freebayes_BCBio_AncFiltered.vcf',    
     conda:
         'envs/main.yml'
     shell:
-        f"bedtools intersect -v -header -a {{input}} -b {config['ancestor_freebayes_vcf']} > {{output}}"
+        f"bedtools intersect -v -header -a {{input.sample}} -b {{input.anc}} > {{output}}"
+
 
 
 #
@@ -476,16 +462,60 @@ rule filter_freebayes:
     shell:
         "bedtools intersect -v -header -a {input.freebayes} -b {input.lofreq} > {output}"
 
+#Filter by ancestor mutations
+rule withoutanc_bcftools_filter_samtools_two:
+	input:
+	    before=rules.bcftools_filter_samtools_two.output,
+	    anc=f'{OUTPUT_DIR}/07_filtered/anc/anc_samtools_filtered.vcf'
+	output:
+	    f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_filtered_noanc.vcf'
+	conda:
+	    'envs/main.yml'
+	shell:
+	    "bedtools intersect -v -header -a {input.before} -b {input.anc} > {output}"
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Annotation Steps ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+rule withoutanc_bcftools_filter_lofreq:
+	input:
+	    before=rules.bcftools_filter_lofreq.output,
+	    anc=f'{OUTPUT_DIR}/07_filtered/anc/anc_lofreq_tumor_relaxed_AncFiltered.filt.vcf'
+	output:
+	    f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_lofreq_tumor_relaxed_AncFiltered_noanc.filt.vcf'
+	conda:
+	    'envs/main.yml'
+	shell:
+	    "bedtools intersect -v -header -a {input.before} -b {input.anc} > {output}"
 
+rule withoutanc_filter_samtools:
+	input:
+	    before=rules.filter_samtools.output,
+	    anc=f'{OUTPUT_DIR}/07_filtered/anc/anc_samtools_AB_AncFiltered.filt.noOverlap.vcf'
+	output:
+	    f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_AB_AncFiltered_noanc.filt.noOverlap.vcf'
+	conda:
+	    'envs/main.yml'
+	shell:
+	    "bedtools intersect -v -header -a {input.before} -b {input.anc} > {output}"
+
+rule withoutanc_filter_freebayes:
+	input:
+	    before=rules.filter_freebayes.output,
+	    anc=f'{OUTPUT_DIR}/07_filtered/anc/anc_freebayes_BCBio_AncFiltered.filt.noOverlap.vcf'
+	output:
+	    f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_freebayes_BCBio_AncFiltered_noanc.filt.noOverlap.vcf'
+	conda:
+	    'envs/main.yml'
+	shell:
+	    "bedtools intersect -v -header -a {input.before} -b {input.anc} > {output}"
+
+
+#Start annotating
 rule annotate_samtools:
     input:
-        rules.filter_samtools.output,
+        rules.withoutanc_filter_samtools.output,
     output:
         f"{rules.filter_samtools.output}.annotated"
     conda:
-        'envs/main.yml'
+        'envs/chris.yml'
     params:
         script=f'{workflow.basedir}/scripts/yeast_annotation_chris_edits_20170925.py'
     shell:
@@ -494,24 +524,23 @@ rule annotate_samtools:
 
 rule annotate_samtools_two:
     input:
-        rules.bcftools_filter_samtools_two.output,
+        rules.withoutanc_bcftools_filter_samtools_two.output,
     output:
         f"{rules.bcftools_filter_samtools_two.output}.annotated"
     conda:
-        'envs/main.yml'
+        'envs/chris.yml'
     params:
         script=f'{workflow.basedir}/scripts/yeast_annotation_chris_edits_20170925.py'
     shell:
         f"python {{params.script}} -f {{input}} -s {config['annotate_sequences']} -n {config['annotate_noncoding']} -g {config['annotate_genome']}"
 
-
 rule annotate_freebayes:
     input:
-        rules.filter_freebayes.output,
+        rules.withoutanc_filter_freebayes.output,
     output:
         f"{rules.filter_freebayes.output}.annotated"
     conda:
-        'envs/main.yml'
+        'envs/chris.yml'
     params:
         script=f'{workflow.basedir}/scripts/yeast_annotation_chris_edits_20170925.py'
     shell:
@@ -520,16 +549,15 @@ rule annotate_freebayes:
 
 rule annotate_lofreq:
     input:
-        rules.bcftools_filter_lofreq.output,
+        rules.withoutanc_bcftools_filter_lofreq.output,
     output:
         f"{rules.bcftools_filter_lofreq.output}.annotated"
     conda:
-        'envs/main.yml'
+        'envs/chris.yml'
     params:
         script=f'{workflow.basedir}/scripts/yeast_annotation_chris_edits_20170925.py'
     shell:
         f"python {{params.script}} -f {{input}} -s {config['annotate_sequences']} -n {config['annotate_noncoding']} -g {config['annotate_genome']}"
-
 
 rule lofreq_columns:
     input:
@@ -537,12 +565,12 @@ rule lofreq_columns:
     output:
         f"{rules.annotate_lofreq.output}".replace('.filt.vcf.annotated', '.filt.twoCol.vcf.annotated')
     conda:
-        'envs/main.yml'
+        'envs/chris.yml'
     shell:
         r"""awk '$8 = $8 FS "NA NA"' """ + '{input} > {output}'
 
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Run Pipeline ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
 
 rule finish:
     input:
@@ -553,6 +581,9 @@ rule finish:
         expand(rules.run_fastqc_persample.output, sample=SAMPLES),
         expand(rules.samtools_flagstat.output, sample=SAMPLES),
         # variant calling pipeline
+        # KEEP realign.sort.bam.bai
+        # KEEP realign.sort.bam
+        # REMOVE EVERYTHING ELSE AT THE END, FIND A WAY TO DELETE EVERYTHING ELSE
         expand(rules.annotate_samtools.output, sample=SAMPLES),
         expand(rules.annotate_samtools_two.output, sample=SAMPLES),
         expand(rules.annotate_freebayes.output, sample=SAMPLES),
@@ -561,3 +592,6 @@ rule finish:
         f'{OUTPUT_DIR}/DONE.txt'
     shell:
         'touch {output}'
+
+
+
