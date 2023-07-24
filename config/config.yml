@@ -1,22 +1,7 @@
-#
-# yEvo Pipeline Run Configuration
-#
-
-########################################################################
-#
-#  REQUIRED PARAMETERS
-#
-########################################################################
-
-# reference genome
-ref_fasta: 'data/genome/sacCer3.fasta'
-
-# ancestor strain mutations
-ancestor_bam: 'data/ancestor/YMD4612_pink_S1_comb_R1R2.RG.MD.realign.sort.bam'
-ancestor_samtools_vcf: 'data/ancestor/YMD4612_pink_S1_samtools_AB_AncFiltered.vcf'
-ancestor_freebayes_vcf: 'data/ancestor/YMD4612_pink_S1_freebayes_BCBio.vcf'
-
-# annotation files
-annotate_sequences: 'data/annotate/orf_coding_all_R64-1-1_20110203.fasta'
-annotate_noncoding: 'data/annotate/saccharomyces_cerevisiae_R64-1-1_20110208.gff.filtered'
-annotate_genome: 'data/annotate/S288C_reference_sequence_R64-1-1_20110203.fsa'
+---
+ref_fasta: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/genome/Geo_LMA_244.fasta'
+output_dir: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/output'
+fastq_dir: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/fastq'
+annotate_sequences: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/annotate/orf_coding_all_R64-1-1_20110203.fasta'
+annotate_noncoding: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/annotate/saccharomyces_cerevisiae_R64-1-1_20110208.gff.filtered'
+annotate_genome: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/annotate/S288C_reference_sequence_R64-1-1_20110203.fsa'
