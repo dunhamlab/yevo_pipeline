@@ -1,7 +1,8 @@
 ---
-ref_fasta: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/genome/Geo_LMA_244.fasta'
-output_dir: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/output'
-fastq_dir: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/fastq'
-annotate_sequences: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/annotate/orf_coding_all_R64-1-1_20110203.fasta'
-annotate_noncoding: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/annotate/saccharomyces_cerevisiae_R64-1-1_20110208.gff.filtered'
-annotate_genome: '/net/dunham/vol1/home/dennig2/yevo_pipeline/data/annotate/S288C_reference_sequence_R64-1-1_20110203.fsa'
+anc_sampele: 
+ref_fasta: '{{BASE_DIR}}/yevo_pipeline/data/genome/Geo_LMA_244.fasta'
+output_dir: '{{BASE_DIR}}/yevo_pipeline/data/output'
+fastq_dir: '{{BASE_DIR}}/yevo_pipeline/data/fastq'
+annotate_sequences: '{{BASE_DIR}}/yevo_pipeline/data/annotate/orf_coding_all_R64-1-1_20110203.fasta'
+annotate_noncoding: '{{BASE_DIR}}/yevo_pipeline/data/annotate/saccharomyces_cerevisiae_R64-1-1_20110208.gff.filtered'
+annotate_genome: '{{BASE_DIR}}/yevo_pipeline/data/annotate/S288C_reference_sequence_R64-1-1_20110203.fsa'
