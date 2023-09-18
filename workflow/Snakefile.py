@@ -341,7 +341,7 @@ rule unzip_lofreq:
 rule anc_filter_samtools:
     input:
         sample=rules.bcftools_pileup.output,
-        anc=f'{OUTPUT_DIR}/06_variant_calling/anc/anc_lofreq_normal_relaxed.vcf'
+        anc=f'{OUTPUT_DIR}/06_variant_calling/{ANC_SAMPLE}/{ANC_SAMPLE}_lofreq_normal_relaxed.vcf'
     output:
         f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_AB_AncFiltered.vcf',    
     conda:
@@ -356,7 +356,7 @@ rule anc_filter_samtools:
 rule anc_filter_freebayes:
     input:
         sample=rules.freebayes.output,
-        anc=f'{OUTPUT_DIR}/06_variant_calling/anc/anc_freebayes_BCBio.vcf'
+        anc=f'{OUTPUT_DIR}/06_variant_calling/{ANC_SAMPLE}/{ANC_SAMPLE}_freebayes_BCBio.vcf'
     output:
         f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_freebayes_BCBio_AncFiltered.vcf',    
     conda:
@@ -466,7 +466,7 @@ rule filter_freebayes:
 rule withoutanc_bcftools_filter_samtools_two:
 	input:
 	    before=rules.bcftools_filter_samtools_two.output,
-	    anc=f'{OUTPUT_DIR}/07_filtered/anc/anc_samtools_filtered.vcf'
+	    anc=f'{OUTPUT_DIR}/07_filtered/{ANC_SAMPLE}/{ANC_SAMPLE}_samtools_filtered.vcf'
 	output:
 	    f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_filtered_noanc.vcf'
 	conda:
@@ -477,7 +477,7 @@ rule withoutanc_bcftools_filter_samtools_two:
 rule withoutanc_bcftools_filter_lofreq:
 	input:
 	    before=rules.bcftools_filter_lofreq.output,
-	    anc=f'{OUTPUT_DIR}/07_filtered/anc/anc_lofreq_tumor_relaxed_AncFiltered.filt.vcf'
+	    anc=f'{OUTPUT_DIR}/07_filtered/{ANC_SAMPLE}/{ANC_SAMPLE}_lofreq_tumor_relaxed_AncFiltered.filt.vcf'
 	output:
 	    f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_lofreq_tumor_relaxed_AncFiltered_noanc.filt.vcf'
 	conda:
@@ -488,7 +488,7 @@ rule withoutanc_bcftools_filter_lofreq:
 rule withoutanc_filter_samtools:
 	input:
 	    before=rules.filter_samtools.output,
-	    anc=f'{OUTPUT_DIR}/07_filtered/anc/anc_samtools_AB_AncFiltered.filt.noOverlap.vcf'
+	    anc=f'{OUTPUT_DIR}/07_filtered/{ANC_SAMPLE}/{ANC_SAMPLE}_samtools_AB_AncFiltered.filt.noOverlap.vcf'
 	output:
 	    f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_samtools_AB_AncFiltered_noanc.filt.noOverlap.vcf'
 	conda:
@@ -499,7 +499,7 @@ rule withoutanc_filter_samtools:
 rule withoutanc_filter_freebayes:
 	input:
 	    before=rules.filter_freebayes.output,
-	    anc=f'{OUTPUT_DIR}/07_filtered/anc/anc_freebayes_BCBio_AncFiltered.filt.noOverlap.vcf'
+	    anc=f'{OUTPUT_DIR}/07_filtered/{ANC_SAMPLE}/{ANC_SAMPLE}_freebayes_BCBio_AncFiltered.filt.noOverlap.vcf'
 	output:
 	    f'{OUTPUT_DIR}/07_filtered/{{sample}}/{{sample}}_freebayes_BCBio_AncFiltered_noanc.filt.noOverlap.vcf'
 	conda:
