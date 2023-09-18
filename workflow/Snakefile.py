@@ -306,8 +306,8 @@ rule lofreq:
     input:
         bam=rules.samtools_sort_three.output,
         idx=rules.samtools_index_three.output,
-        ancidx=f'{OUTPUT_DIR}/05_gatk/anc/anc_comb_R1R2.RG.MD.realign.sort.bam.bai',
-        ancbam=f'{OUTPUT_DIR}/05_gatk/anc/anc_comb_R1R2.RG.MD.realign.sort.bam'
+        ancidx=f'{OUTPUT_DIR}/05_gatk/{ANC_SAMPLE}/{ANC_SAMPLE}_comb_R1R2.RG.MD.realign.sort.bam.bai',
+        ancbam=f'{OUTPUT_DIR}/05_gatk/{ANC_SAMPLE}/{ANC_SAMPLE}_comb_R1R2.RG.MD.realign.sort.bam'
     output:
         normal=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_normal_relaxed.vcf.gz',
         tumor=f'{OUTPUT_DIR}/06_variant_calling/{{sample}}/{{sample}}_lofreq_tumor_relaxed.vcf.gz',
