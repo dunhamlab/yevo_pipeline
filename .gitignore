@@ -11,7 +11,8 @@ results/
 # ignore hidden snakemake files
 .snakemake/
 
-
+# ignore alternate config file:
+config/config-hardcoded.yml
 
 
 
