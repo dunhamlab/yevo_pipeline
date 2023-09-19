@@ -21,6 +21,8 @@ SEQID='yevo_pipeline_align'
 
 REF_DIR = config['ref_fasta']
 
+ANC_SAMPLE = config['anc_sample']
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Begin Pipeline ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
