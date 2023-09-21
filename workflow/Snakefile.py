@@ -516,7 +516,7 @@ rule annotate_samtools:
     input:
         rules.withoutanc_filter_samtools.output,
     output:
-        f"{rules.filter_samtools.output}.annotated"
+        f"{rules.withoutanc_filter_samtools.output}.annotated"
     conda:
         'envs/chris.yml'
     params:
@@ -529,7 +529,7 @@ rule annotate_samtools_two:
     input:
         rules.withoutanc_bcftools_filter_samtools_two.output,
     output:
-        f"{rules.bcftools_filter_samtools_two.output}.annotated"
+        f"{rules.withoutanc_bcftools_filter_samtools_two.output}.annotated"
     conda:
         'envs/chris.yml'
     params:
@@ -541,7 +541,7 @@ rule annotate_freebayes:
     input:
         rules.withoutanc_filter_freebayes.output,
     output:
-        f"{rules.filter_freebayes.output}.annotated"
+        f"{rules.withoutanc_filter_freebayes.output}.annotated"
     conda:
         'envs/chris.yml'
     params:
@@ -554,7 +554,7 @@ rule annotate_lofreq:
     input:
         rules.withoutanc_bcftools_filter_lofreq.output,
     output:
-        f"{rules.bcftools_filter_lofreq.output}.annotated"
+        f"{rules.withoutanc_bcftools_filter_lofreq.output}.annotated"
     conda:
         'envs/chris.yml'
     params:

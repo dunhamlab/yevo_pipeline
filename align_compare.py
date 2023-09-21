@@ -14,7 +14,9 @@
 # The --indexed flag can be used if the indexed genome already 
 # exists in the working directory.
 #
-
+# Examples: 
+#
+# python align_compare.py --ref data/genome/sacCer3.fasta --ancestral_1 data/fastq/sample_03_R1_001.fastq.gz --ancestral_2 data/fastq/sample_03_R2_001.fastq.gz --csv config/config.csv
 #
 # example evolved_samples.csv:
 # (NOTE: this file is expected to have a header line.)
@@ -46,20 +48,15 @@ def index_ref_genome(ref):
 def align_ancestral(ref, ancestral_1, ancestral_2):
     # Align paired-end reads for ancestral sample
     run_cmd(f"bwa mem {ref} {ancestral_1} {ancestral_2} > ancestral.sam")
-    
     # Convert SAM to BAM and sort
     run_cmd("samtools view -Sb ancestral.sam | samtools sort -o ancestral_sorted.bam")
-
     # Index the BAM file
     run_cmd("samtools index ancestral_sorted.bam")
-
 def align_evolved(ref, sample_name, evolved_1, evolved_2):
     # Align paired-end reads for evolved sample
     run_cmd(f"bwa mem {ref} {evolved_1} {evolved_2} > {sample_name}.sam")
-    
     # Convert SAM to BAM and sort
     run_cmd(f"samtools view -Sb {sample_name}.sam | samtools sort -o {sample_name}_sorted.bam")
-
     # Index BAM files
     run_cmd(f"samtools index {sample_name}_sorted.bam")
 
@@ -81,6 +78,13 @@ def call_variants_freebayes(ref, sample_name):
 if __name__ == "__main__":
     import argparse
 
+
+def call_variants_freebayes(ref, sample_name):
+    # Variant calling using FreeBayes
+    run_cmd(f"freebayes -f {ref} {sample_name}_sorted.bam > {sample_name}_FreeBayes_filtered.vcf")
+if __name__ == "__main__":
+    import argparse
+
     parser = argparse.ArgumentParser(description="Align paired-end reads to a reference genome and call variants.")
     parser.add_argument("--ref", required=True, help="Path to the reference genome fasta file.")
     parser.add_argument("--ancestral_1", required=True, help="Path to the ancestral paired-end reads (file 1).")
@@ -89,11 +93,9 @@ if __name__ == "__main__":
     parser.add_argument("--indexed", action='store_true', help="Specify this flag if the reference genome is already indexed.")
 
     args = parser.parse_args()
-
     # If genome is not indexed, index it
     if not args.indexed:
         index_ref_genome(args.ref)
-
     # Align ancestral
     align_ancestral(args.ref, args.ancestral_1, args.ancestral_2)
 
@@ -101,10 +103,9 @@ if __name__ == "__main__":
     with open(args.csv, 'r') as csv_file:
         csv_reader = csv.reader(csv_file)
         header = next(csv_reader)  # Skip header
-
+        
         for row in csv_reader:
             sample_name, evolved_1, evolved_2 = row
-            
             align_evolved(args.ref, sample_name, evolved_1, evolved_2)
 
             call_variants_bcftools(args.ref, sample_name)
