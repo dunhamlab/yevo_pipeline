@@ -14,11 +14,11 @@ results/
 # ignore alternate config file:
 config/config-hardcoded.yml
 
+# ignore archive files
+archive/
 
-
-
-
-
+# ignore phage dna testing directory
+phage_testing/
 
 
 

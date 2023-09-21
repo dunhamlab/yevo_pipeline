@@ -19,7 +19,8 @@ OUTPUT_DIR = config['output_dir']
 # Project name and date for bam header
 SEQID='yevo_pipeline_align'
 
-REF_DIR = config['ref_fasta']
+#REF_DIR = config['ref_fasta']
+REF_DIR = os.getcwd()
 
 ANC_SAMPLE = config['anc_sample']
 
