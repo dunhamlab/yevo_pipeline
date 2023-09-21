@@ -14,6 +14,9 @@
 # The --indexed flag can be used if the indexed genome already 
 # exists in the working directory.
 #
+# Examples: 
+#
+# python align_compare.py --ref data/genome/sacCer3.fasta --ancestral_1 data/fastq/sample_03_R1_001.fastq.gz --ancestral_2 data/fastq/sample_03_R2_001.fastq.gz --csv config/config.csv
 #
 # example evolved_samples.csv:
 # (NOTE: this file is expected to have a header line.)
