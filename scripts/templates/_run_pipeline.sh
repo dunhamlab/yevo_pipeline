@@ -5,7 +5,8 @@
 #
 
 # absolute path to the cloned yevo_pipeline repo
-REPO_DIR="{{BASE_DIR}}"
+REPO_DIR=$(pwd)
+BASE_DIR=$(pwd)
 
 # absolute path to fastq.gz location (e.g. <sample>_R1_001.fastq.gz files)
 FASTQ_DIR="$REPO_DIR/data/fastq"

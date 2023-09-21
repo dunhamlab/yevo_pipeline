@@ -1,5 +1,5 @@
 ---
-anc_sample: 
+anc_sample: 'sample_01' 
 ref_fasta: '{{BASE_DIR}}/yevo_pipeline/data/genome/Geo_LMA_244.fasta'
 output_dir: '{{BASE_DIR}}/yevo_pipeline/data/output'
 fastq_dir: '{{BASE_DIR}}/yevo_pipeline/data/fastq'
